@@ -1,0 +1,61 @@
+{
+  "name": "bowling-engine",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A ten-pin bowling scoring engine you can drive. Feed it rolls and it scores a real game — strikes and spares held open until the frames that resolve them actually land.",
+  "keywords": [
+    "bowling",
+    "ten-pin",
+    "scoring",
+    "simulation",
+    "game"
+  ],
+  "license": "MIT",
+  "author": "John Webster",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johnfrog76/bowling-engine.git"
+  },
+  "homepage": "https://github.com/johnfrog76/bowling-engine#readme",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run lint && npm run typecheck && npm test",
+    "shots": "node scripts/shots.mjs"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "^9.54.0",
+    "@fluentui/react-icons": "^2.0.270",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@types/jest": "^29.5.14",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.11.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2",
+    "vite": "^5.4.10",
+    "playwright": "^1.48.2"
+  }
+}
