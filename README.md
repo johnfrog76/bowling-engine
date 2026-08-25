@@ -24,9 +24,11 @@ Like every repo in this family, there's the **engine** and there's the
   a roll), `isSplit`, `simulateAutobowl` — every rule below, and nothing
   else.
 - **The GUI** (`src/pages/EnginePage.tsx`) is a small interactive scene
-  built entirely on top of that engine — pick a lane style, pick a bowler,
-  roll or autobowl, watch the pins fall. It's the same relationship the
-  two decks have to it, just a third, simpler consumer, live on this page.
+  built entirely on top of that engine — pick a bowler, set a skill level
+  (it decides how many gutter balls and 7–10 splits you're in for), flip
+  the lane to Starlight, roll or autobowl, watch the pins fall. It's the
+  same relationship the two decks have to it, just a third, simpler
+  consumer, live on this page.
 
 ## Why it exists
 
