@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bowling Engine — a ten-pin scoring engine you can drive</title>
+    <meta
+      name="description"
+      content="Ten-pin scoring is a ledger that keeps rewriting the past. This plays it out correctly, frame by frame, including the one rule everybody forgets — the 10th frame's fill-ball exception."
+    />
+    <meta property="og:title" content="Bowling Engine" />
+    <meta
+      property="og:description"
+      content="Feed it rolls — live, taps, or autobowl — and it scores a real game, strikes and spares held open until the frames that resolve them actually land."
+    />
+    <meta property="og:type" content="website" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M 26 6 C 33 6 36 11 35 17 C 34 22 32 25 32 30 C 32 37 39 42 39 52 C 39 60 33 63 26 63 C 19 63 13 60 13 52 C 13 42 20 37 20 30 C 20 25 18 22 17 17 C 16 11 19 6 26 6 Z' fill='%23f4efe2'/%3E%3Cpath d='M 20 24 L 32 24' stroke='%23c0463f' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M 20 29 L 32 29' stroke='%23c0463f' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='45' cy='45' r='17' fill='%231a7f96'/%3E%3Ccircle cx='41' cy='39' r='2' fill='%230d1215'/%3E%3Ccircle cx='47' cy='37' r='2' fill='%230d1215'/%3E%3Ccircle cx='50' cy='42' r='2' fill='%230d1215'/%3E%3C/svg%3E"
+    />
+    <style>
+      /* Painted before React mounts so there is never a white flash — the
+         whole thing is a dark stage (same night as the sibling engine repo)
+         and a flash of white reads as a broken page. */
+      html,
+      body {
+        margin: 0;
+        background: #131022;
+        color: #eae6f6;
+        /* Tells the browser to render its OWN chrome dark — scrollbars, form
+           controls, the overscroll gutter. FluentProvider themes the components
+           it renders and cannot reach any of that. */
+        color-scheme: dark;
+      }
+
+      /* PORTALS TOO. Fluent renders overlays into a portal outside #root, so a
+         rule scoped to html/body never reaches a portal's own scroll container. */
+      * {
+        color-scheme: dark;
+      }
+
+      /* WebKit still wants explicit colours: `color-scheme` alone leaves Chrome
+         with its default scrollbar on some platforms. */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #131022;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #282344;
+        border-radius: 6px;
+        border: 3px solid #131022;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #3a3358;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
