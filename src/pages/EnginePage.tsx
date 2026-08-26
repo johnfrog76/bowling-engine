@@ -34,6 +34,7 @@ import { BowlerFigure, Trophy } from "../ui/Bowlers";
 import { bowlerBall, bowlerChrome, bowlerLabel } from "../ui/roster";
 import { rollForSkill, skillTrophy } from "../ui/skill";
 import { Controls } from "../ui/Controls";
+import { BallCurtain } from "../ui/BallCurtain";
 import { DEFAULT_PLAYERS, DEFAULT_SETTINGS, type PlayerConfig, type Settings } from "../ui/settings";
 import { useCompactLayout } from "../ui/useCompactLayout";
 
@@ -55,6 +56,30 @@ import { useCompactLayout } from "../ui/useCompactLayout";
  */
 
 const CYCLE_MS = Math.round(LANE_CYCLE_S * 1000) + 500;
+
+/**
+ * THE COUNTDOWN — a game starts when somebody has been told it is starting.
+ *
+ * THE REASON, and it is not decoration: a player feels in control when they
+ * know a game is starting. Auto roll is the default, so before this the lane
+ * simply began bowling seven hundred milliseconds after you arrived — no
+ * announced beginning, and therefore no sense that the game was yours to run
+ * rather than something already running that you had walked in on. Three
+ * seconds of ceremony buys the whole session a beginning, and the same
+ * argument is why the end of a game deserves more than four words appended to
+ * the score in the top bar.
+ *
+ * IT IS ALWAYS SKIPPABLE — one tap on the ball. Three seconds is an event the
+ * first time and an obstacle the fourth, and the difference between ceremony
+ * and a cutscene is whether you can get out of it.
+ *
+ * The count runs 3 → 2 → 1 → 0, and ZERO IS THE FADE: the lane is handed back
+ * as the curtain begins to lift, so the first ball is already on its way while
+ * the ball is still swelling out of shot.
+ */
+const COUNT_FROM = 3;
+const COUNT_TICK_MS = 700;
+const COUNT_FADE_MS = 380;
 
 const useStyles = makeStyles({
   page: {
@@ -448,11 +473,30 @@ export function EnginePage() {
       setLastBy(null);
       busyRef.current = false;
       setBusy(false);
+      setCountdown(COUNT_FROM);
     }
   };
 
   const up = bowlerUp(match);
   const over = isMatchOver(match);
+
+  /**
+   * The curtain's count, or null once it is gone.
+   *
+   * `held` is what the rest of the page reads: the lane takes no ball while
+   * the curtain is up. Kept as a plain derived boolean rather than a second
+   * piece of state, so there is exactly one thing to reset.
+   */
+  const [countdown, setCountdown] = useState<number | null>(COUNT_FROM);
+  const held = countdown !== null && countdown > 0;
+  useEffect(() => {
+    if (countdown === null) return;
+    const t = setTimeout(
+      () => setCountdown((n) => (n === null || n <= 0 ? null : n - 1)),
+      countdown > 0 ? COUNT_TICK_MS : COUNT_FADE_MS,
+    );
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   /**
    * THE LANE IS BUSY UNTIL THE BALL HAS FINISHED ARRIVING.
@@ -472,12 +516,15 @@ export function EnginePage() {
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
 
-  const stateRef = useRef({ match, players, up });
-  stateRef.current = { match, players, up };
+  const stateRef = useRef({ match, players, up, held });
+  stateRef.current = { match, players, up, held };
 
   const rollOnce = () => {
-    const { match: m, players: ps, up: who } = stateRef.current;
-    if (who === null || busyRef.current) return;
+    const { match: m, players: ps, up: who, held: shut } = stateRef.current;
+    // The curtain holds the lane the same way the machine cycle does — read
+    // here rather than only disabling the button, so an autobowled roll and a
+    // held key are stopped by the same rule.
+    if (who === null || busyRef.current || shut) return;
     busyRef.current = true;
     setBusy(true);
     const standing = idleStanding(m, who);
@@ -498,15 +545,17 @@ export function EnginePage() {
     return () => clearTimeout(t);
   }, [busy]);
 
+  // Restarts when the curtain lifts, which is what puts the first ball on the
+  // lane as the ball swells out of shot rather than under it.
   useEffect(() => {
-    if (!settings.autoRoll || over) return;
+    if (!settings.autoRoll || over || held) return;
     const first = setTimeout(() => rollRef.current(), 700);
     const id = setInterval(() => rollRef.current(), CYCLE_MS);
     return () => {
       clearTimeout(first);
       clearInterval(id);
     };
-  }, [settings.autoRoll, over]);
+  }, [settings.autoRoll, over, held]);
 
   // Only the lane that was just thrown on plays a cycle; the others hold
   // whatever they were left standing.
@@ -564,6 +613,7 @@ export function EnginePage() {
     setLastBy(null);
     busyRef.current = false;
     setBusy(false);
+    setCountdown(COUNT_FROM);
   };
 
   // ── the stage ─────────────────────────────────────────────────────────────
@@ -651,12 +701,28 @@ export function EnginePage() {
             <Button
               appearance="primary"
               size="small"
-              disabled={over || busy}
+              disabled={over || busy || held}
               onClick={() => rollRef.current()}
               className={s.laneRoll}
             >
               Roll
             </Button>
+          )}
+          {/* THE CURTAIN, pinned to the WINDOW rather than the strip — the
+              same rule the overhead chip follows, so it stays put if the
+              camera travels underneath it. It takes the colour of whoever is
+              about to throw, which is how a two-hander learns whose game it is
+              before the first ball. */}
+          {countdown !== null && (
+            <BallCurtain
+              tint={bowlerChrome(players[Math.min(up ?? 0, count - 1)].kind)}
+              caption="STARTING"
+              line={String(Math.max(countdown, 1))}
+              fading={countdown === 0}
+              announce={`Starting in ${Math.max(countdown, 1)}`}
+              actionLabel="Skip the countdown and start bowling"
+              onAction={() => setCountdown(0)}
+            />
           )}
         </Pane>
       </div>
@@ -755,7 +821,7 @@ export function EnginePage() {
           {/* On a phone the BOWLERS pane is not rendered, so the per-bowler
               Roll has nowhere to live — the bar keeps one instead. */}
           {compact && !settings.autoRoll && (
-            <Button appearance="primary" disabled={over || busy} onClick={() => rollRef.current()}>
+            <Button appearance="primary" disabled={over || busy || held} onClick={() => rollRef.current()}>
               Roll
             </Button>
           )}

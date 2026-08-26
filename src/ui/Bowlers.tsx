@@ -10,7 +10,12 @@ import { bowlerBall } from "./roster";
  * the line, the way a bowling shirt says who's up with no caption.
  */
 
-function BowlingBall({
+/**
+ * The house ball, drawn once. Exported because the curtain holds one up over
+ * the lane at forty times this size and a second hand-drawn ball would drift
+ * away from this one the first time either is touched.
+ */
+export function BowlingBall({
   x,
   y,
   r = 22,
