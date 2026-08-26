@@ -10,10 +10,29 @@ import { bowlerBall } from "./roster";
  * the line, the way a bowling shirt says who's up with no caption.
  */
 
-function BowlingBall({ x, y, r = 22, tint = "#26343c" }: { x: number; y: number; r?: number; tint?: string }) {
+function BowlingBall({
+  x,
+  y,
+  r = 22,
+  tint = "#26343c",
+  glow = false,
+}: {
+  x: number;
+  y: number;
+  r?: number;
+  tint?: string;
+  /** Under blacklight the ball is the brightest thing the bowler is holding. */
+  glow?: boolean;
+}) {
   return (
     <g transform={`translate(${x}, ${y})`}>
-      <circle r={r} fill={tint} stroke="#0d1215" strokeWidth="2" />
+      <circle
+        r={r}
+        fill={tint}
+        stroke="#0d1215"
+        strokeWidth="2"
+        style={glow ? { filter: `drop-shadow(0 0 ${r * 0.5}px ${tint})` } : undefined}
+      />
       <circle cx={-r * 0.26} cy={-r * 0.3} r={r * 0.11} fill="#0d1215" />
       <circle cx={r * 0.07} cy={-r * 0.42} r={r * 0.11} fill="#0d1215" />
       <circle cx={r * 0.26} cy={-r * 0.15} r={r * 0.11} fill="#0d1215" />
@@ -46,8 +65,8 @@ function BowlingShirt({ w, base, panel }: { w: number; base: string; panel: stri
 const SHOE = "#c0463f";
 const CREAM = "#f2e8d2";
 
-function AlienFigure() {
-  const ball = bowlerBall("alien");
+function AlienFigure({ starlight }: { starlight: boolean }) {
+  const ball = bowlerBall("alien", starlight);
   return (
     <svg viewBox="0 0 120 214" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
       <defs>
@@ -70,7 +89,7 @@ function AlienFigure() {
       {/* both arms wrap forward — the ball presented at the chest */}
       <path d="M 42 112 Q 34 126 46 132" fill="none" stroke="url(#be-grey)" strokeWidth="8" strokeLinecap="round" />
       <path d="M 78 112 Q 86 126 74 132" fill="none" stroke="url(#be-grey)" strokeWidth="8" strokeLinecap="round" />
-      <BowlingBall x={60} y={130} r={17} tint={ball} />
+      <BowlingBall x={60} y={130} r={17} tint={ball} glow={starlight} />
       <circle cx="47" cy="135" r="5.5" fill="#c3ccd0" />
       <circle cx="73" cy="135" r="5.5" fill="#c3ccd0" />
       {/* neck + head — dome cranium, glossy almonds */}
@@ -87,8 +106,8 @@ function AlienFigure() {
   );
 }
 
-function RobotFigure() {
-  const ball = bowlerBall("robot");
+function RobotFigure({ starlight }: { starlight: boolean }) {
+  const ball = bowlerBall("robot", starlight);
   return (
     <svg viewBox="0 0 140 232" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
       <defs>
@@ -120,7 +139,7 @@ function RobotFigure() {
       <g transform="translate(70, 72)">
         <BowlingShirt w={64} base="#8fd8c6" panel={CREAM} />
       </g>
-      <BowlingBall x={126} y={58} r={19} tint={ball} />
+      <BowlingBall x={126} y={58} r={19} tint={ball} glow={starlight} />
       <circle cx="120" cy="72" r="7" fill="#c6d4dc" />
       {/* head + visor */}
       <rect x="38" y="26" width="64" height="50" rx="14" fill="url(#be-robotmetal)" />
@@ -133,8 +152,8 @@ function RobotFigure() {
   );
 }
 
-function DevFigure() {
-  const tint = bowlerBall("dev");
+function DevFigure({ starlight }: { starlight: boolean }) {
+  const tint = bowlerBall("dev", starlight);
   const skin = "#e8b88a";
   return (
     <svg viewBox="-60 -60 120 190" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
@@ -154,7 +173,7 @@ function DevFigure() {
       {/* arms hanging ready, the ball in hand */}
       <path d="M -38 6 Q -52 36 -48 64" fill="none" stroke={skin} strokeWidth="9" strokeLinecap="round" />
       <path d="M 38 6 Q 54 36 50 64" fill="none" stroke={skin} strokeWidth="9" strokeLinecap="round" />
-      <BowlingBall x={52} y={70} r={16} tint={tint} />
+      <BowlingBall x={52} y={70} r={16} tint={tint} glow={starlight} />
       {/* head + hair, from behind */}
       <circle cx="0" cy="-26" r="19" fill={skin} />
       <path d="M -19 -30 C -20 -56 20 -56 19 -30 C 12 -44 -12 -44 -19 -30 Z" fill="#3a2a22" />
@@ -163,8 +182,8 @@ function DevFigure() {
 }
 
 /** The selected bowler, drawn to fill their pane. */
-export function BowlerFigure({ kind }: { kind: BowlerKind }) {
-  if (kind === "alien") return <AlienFigure />;
-  if (kind === "robot") return <RobotFigure />;
-  return <DevFigure />;
+export function BowlerFigure({ kind, starlight = false }: { kind: BowlerKind; starlight?: boolean }) {
+  if (kind === "alien") return <AlienFigure starlight={starlight} />;
+  if (kind === "robot") return <RobotFigure starlight={starlight} />;
+  return <DevFigure starlight={starlight} />;
 }

@@ -85,6 +85,21 @@ const RACK_POS: Record<PinId, { x: number; y: number }> = {
   1: { x: 0, y: 22 },
 };
 
+/**
+ * PAINT ORDER IS DEPTH ORDER — back row first, headpin last.
+ *
+ * SVG has no z-index: what is drawn later is drawn on top. Walking the rack in
+ * pin order (1…10) is walking it FRONT TO BACK, which paints the back row over
+ * the pins in front of it — the rack reads flat, and a pin at the back appears
+ * to stand in front of the headpin. Sorting by the rack's own y puts the
+ * deepest row down first and the headpin on top, which is what the shallow
+ * perspective above is already claiming.
+ *
+ * Derived from `RACK_POS` rather than written out as a second list, so the
+ * two can never disagree about where a pin is.
+ */
+const PAINT_ORDER: readonly PinId[] = [...FULL_RACK].sort((a, b) => RACK_POS[a].y - RACK_POS[b].y);
+
 function StandingRack({
   x,
   y,
@@ -136,7 +151,7 @@ function StandingRack({
 
   return (
     <g>
-      {FULL_RACK.map((p) => {
+      {PAINT_ORDER.map((p) => {
         const j = anim(p);
         if (!j.render) return null;
         const { cx, baseY, ps, shade } = place(p);
@@ -168,6 +183,7 @@ function LaneBed({
   topW,
   bottomW,
   style,
+  laneNumber,
 }: {
   x: number;
   topY: number;
@@ -175,6 +191,8 @@ function LaneBed({
   topW: number;
   bottomW: number;
   style: LaneStyle;
+  /** Namespaces this bed's gradient id — two lanes on one page must not collide. */
+  laneNumber: number;
 }) {
   const uv = style === "starlight";
   // one palette object per style — the same geometry, a different night
@@ -207,7 +225,10 @@ function LaneBed({
         glow: art.deckGlow,
         markGlow: false,
       };
-  const gradId = uv ? "be-lane-bed-uv" : "be-lane-bed";
+  // Namespaced per lane like the pit clip and the unit mask: SVG ids are
+  // document-global, so a second lane on the same page would otherwise define
+  // a duplicate id and every `url(#…)` would resolve to whichever won.
+  const gradId = `be-lane-bed${uv ? "-uv" : ""}-${laneNumber}`;
   const half = (w: number) => w / 2;
   const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
   const edgeAt = (t: number, side: 1 | -1) => x + side * lerp(half(bottomW), half(topW), t);
@@ -484,6 +505,7 @@ export function LaneView({
   roll,
   ballTint = "#26343c",
   laneNumber = 1,
+  fit = "meet",
 }: {
   laneStyle?: LaneStyle;
   /** the idle rack — what stands when no roll is playing */
@@ -492,18 +514,34 @@ export function LaneView({
   roll?: LaneRoll;
   ballTint?: string;
   laneNumber?: number;
+  /**
+   * How the scene meets its frame.
+   *
+   * `meet` fits the whole view inside the pane, which leaves bands of empty
+   * room when the pane is not the scene's shape. `slice` FILLS the pane and
+   * crops instead — and what gets cropped is the flat dark room either side
+   * of the lane, which carries nothing. Use it wherever the pane is close to
+   * the scene's own proportions (two lanes side by side); a much wider pane
+   * would crop the pin deck away instead, which is why this is a choice the
+   * caller makes rather than a default.
+   */
+  fit?: "meet" | "slice";
 }) {
   const uv = laneStyle === "starlight";
   // A ball that felled nothing found the channel: it drifts off the boards
   // on the way down-lane instead of running to the pocket.
   const gutter = roll !== undefined && roll.felled.length === 0;
   return (
-    <svg viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
+    <svg
+      viewBox="0 0 900 520"
+      preserveAspectRatio={`xMidYMid ${fit}`}
+      style={{ display: "block", width: "100%", height: "100%" }}
+    >
       <style>{LANE_KEYFRAMES}</style>
       {/* the room */}
       <rect x="0" y="0" width="900" height="520" fill={uv ? art.uvRoom : art.room} />
       <rect x="0" y="0" width="900" height={DECK_Y} fill={uv ? "#12143a" : art.roomWall} opacity="0.55" />
-      <LaneBed x={LANE_X} topY={DECK_Y} bottomY={FOUL_Y} topW={TOP_W} bottomW={BOTTOM_W} style={laneStyle} />
+      <LaneBed x={LANE_X} topY={DECK_Y} bottomY={FOUL_Y} topW={TOP_W} bottomW={BOTTOM_W} style={laneStyle} laneNumber={laneNumber} />
       {/* the roll — same clock as the pins and the gate */}
       {roll && (
         <g key={`ball-${roll.id}`} transform={`translate(${LANE_X}, ${FOUL_Y - 16})`}>
