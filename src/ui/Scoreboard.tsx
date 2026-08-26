@@ -30,8 +30,35 @@ const BOX_W = 86;
 const TENTH_W = BOX_W * 1.5; // period-accurate: scorers sized it up for the fill digit
 const TOTAL_W = BOX_W * 9 + TENTH_W + 40;
 
-export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; playerName?: string }) {
+export function Scoreboard({
+  game,
+  playerName = "AUTOBOWL",
+  compact = false,
+}: {
+  game: Game;
+  playerName?: string;
+  /**
+   * PHONE LEGIBILITY BEATS PERIOD CHARM.
+   *
+   * The marks are written in a script face, which is right — a scorer wrote
+   * these by hand. But the sheet is 1000 units wide and a phone renders it a
+   * few hundred pixels across, and a light cursive at that scale is not
+   * "atmospheric", it is unreadable: the thing this page exists to show you
+   * becomes the thing you cannot see.
+   *
+   * So on a small screen the marks step into the mono face and gain weight,
+   * and the box rules lose their fade. Everything that makes it a scoresheet
+   * — the acetate, the wax colour, the lamp pool, the wet unresolved frame —
+   * is untouched. Only the handwriting steps aside, and only where it has to.
+   */
+  compact?: boolean;
+}) {
   let running = 0;
+  const markFont = compact ? art.mono : art.hand;
+  const ruleOpacity = compact ? 0.8 : 0.55;
+  const cellOpacity = compact ? 0.7 : 0.45;
+  const markSize = compact ? 30 : 24;
+  const totalSize = compact ? 40 : 34;
   return (
     <svg viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
       <style>{WET_KEYFRAMES}</style>
@@ -41,7 +68,7 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
         {/* the acetate */}
         <rect x="-20" y="-46" width={TOTAL_W} height="172" rx="6" fill={art.acetate} opacity="0.95" />
         <rect x="-20" y="-46" width={TOTAL_W} height="172" rx="6" fill="none" stroke="#c9b98c" strokeWidth="2.5" />
-        <text x="2" y="-27" fontFamily={art.hand} fontSize="22" fill={art.wax} opacity="0.9">
+        <text x="2" y="-27" fontFamily={markFont} fontSize={compact ? 26 : 22} fontWeight={compact ? 700 : undefined} fill={art.wax} opacity="0.9">
           {playerName}
         </text>
         {Array.from({ length: 10 }).map((_, fi) => {
@@ -54,7 +81,7 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
           const rolls = fi === 9 ? [0, 1, 2] : [0, 1];
           return (
             <g key={fi} transform={`translate(${bx}, 0)`}>
-              <rect x="0" y="0" width={w} height="112" fill="none" stroke={art.wax} strokeWidth="2" opacity="0.55" />
+              <rect x="0" y="0" width={w} height="112" fill="none" stroke={art.wax} strokeWidth="2" opacity={ruleOpacity} />
               <text x={w / 2} y="-3" textAnchor="middle" fontFamily={art.mono} fontSize="18" fontWeight="700" fill={art.wax} opacity="0.8">
                 {fi + 1}
               </text>
@@ -69,8 +96,8 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
                       height="34"
                       fill="none"
                       stroke={art.wax}
-                      strokeWidth="1.4"
-                      opacity="0.45"
+                      strokeWidth={compact ? 1.8 : 1.4}
+                      opacity={cellOpacity}
                       strokeDasharray={fi === 9 && ri === 2 ? "5 4" : undefined}
                     />
                     {marked && (
@@ -78,8 +105,8 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
                         x={ri * cw + cw / 2}
                         y="26"
                         textAnchor="middle"
-                        fontFamily={art.hand}
-                        fontSize="24"
+                        fontFamily={markFont}
+                        fontSize={markSize}
                         fontWeight="700"
                         fill={art.wax}
                         style={wet ? { animation: "be-wet 2.2s ease-in-out infinite" } : undefined}
@@ -93,7 +120,7 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
               {/* the cumulative total — the number that keeps rewriting the past */}
               {marked &&
                 (score.resolved ? (
-                  <text x={w / 2} y="88" textAnchor="middle" fontFamily={art.hand} fontSize="34" fontWeight="700" fill={art.wax}>
+                  <text x={w / 2} y="88" textAnchor="middle" fontFamily={markFont} fontSize={totalSize} fontWeight="700" fill={art.wax}>
                     {running}
                   </text>
                 ) : (
@@ -101,8 +128,9 @@ export function Scoreboard({ game, playerName = "AUTOBOWL" }: { game: Game; play
                     x={w / 2}
                     y="88"
                     textAnchor="middle"
-                    fontFamily={art.hand}
-                    fontSize="30"
+                    fontFamily={markFont}
+                    fontSize={compact ? 34 : 30}
+                    fontWeight={compact ? 700 : undefined}
                     fill={art.wax}
                     style={{ animation: "be-wet 2.2s ease-in-out infinite" }}
                   >

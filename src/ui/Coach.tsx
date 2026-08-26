@@ -140,6 +140,8 @@ const useStyles = makeStyles({
     minWidth: 0,
     fontFamily: art.hand,
     fontSize: "1rem",
+    fontWeight: 600,
+    "@media (max-width: 640px)": { fontSize: "1.05rem" },
     lineHeight: 1.45,
     color: art.text,
   },

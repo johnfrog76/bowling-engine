@@ -123,7 +123,19 @@ export const nightArt: ArtTheme = {
   invalid: "#f25c54",
   panel: "rgba(8,7,16,0.5)",
   mono: "'Cascadia Code', 'Fira Code', 'Consolas', ui-monospace, monospace",
-  hand: "'Segoe Print', 'Comic Sans MS', cursive",
+  // A HAND, ON EVERY PLATFORM — and the fallback is the whole point.
+  //
+  // This was 'Segoe Print', 'Comic Sans MS', cursive. Neither of those ships
+  // on iOS, so an iPhone fell straight through to generic `cursive`, which it
+  // resolves to Snell Roundhand — a hairline formal script. The coach's line
+  // and the scoresheet's marks were rendering in it, which is why they read
+  // as faint and unreadable there rather than hand-written.
+  //
+  // Marker Felt and Bradley Hand both ship on iOS and macOS and are heavy
+  // enough to survive at scoresheet size; Marker Felt leads because this is
+  // meant to look like a marker on acetate anyway. Generic `cursive` stays
+  // last as a true fallback, not as the iOS default it had quietly become.
+  hand: "'Segoe Print', 'Marker Felt', 'Bradley Hand', 'Comic Sans MS', cursive",
 
   laneWood: "#b98955",
   laneWoodDeep: "#8a6238",
