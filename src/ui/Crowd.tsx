@@ -61,9 +61,24 @@ export function Crowd({ uv = false }: { uv?: boolean }) {
   const lightA = uv ? art.uvMagenta : "#e8a13a";
   const lightB = uv ? art.uvCyan : "#8fd8c6";
   return (
-    <svg viewBox="0 0 900 140" preserveAspectRatio="xMidYMid slice" style={{ display: "block", width: "100%", height: "100%" }}>
+    // A FIXED RENDER HEIGHT, NOT 100% — and the crop is the reason (John).
+    //
+    // At `height: 100%` the stands are squeezed to whatever the band happens
+    // to be and `slice` then crops evenly top and bottom, which lops the tops
+    // off the back row and the feet off the front and centres what is left.
+    // Rendered at a fixed height instead, the room keeps close to its own
+    // proportions and the band clips the BOTTOM: string lights and back rows
+    // in frame, the front row running off the edge — the stands carrying on
+    // past the shot rather than a strip squashed into it. It holds up as the
+    // desktop narrows, and a phone's shorter band simply crops more of the
+    // same picture rather than getting a different one.
+    <svg
+      viewBox="0 0 900 200"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ display: "block", width: "100%", height: "300px" }}
+    >
       <style>{CROWD_KEYFRAMES}</style>
-      <rect x="0" y="0" width="900" height="140" fill={uv ? art.uvRoom : art.room} />
+      <rect x="0" y="0" width="900" height="200" fill={uv ? art.uvRoom : art.room} />
       {/* string lights along the back wall */}
       <path d="M 0 26 Q 225 46 450 26 Q 675 6 900 26" fill="none" stroke="#3a3358" strokeWidth="2" />
       {Array.from({ length: 15 }).map((_, i) => {
@@ -84,7 +99,8 @@ export function Crowd({ uv = false }: { uv?: boolean }) {
       })}
       {/* bleacher rows */}
       <rect x="0" y="64" width="900" height="30" fill={uv ? "#191c48" : "#232a44"} />
-      <rect x="0" y="104" width="900" height="36" fill={uv ? "#12143a" : "#1a2036"} />
+      <rect x="0" y="104" width="900" height="40" fill={uv ? "#12143a" : "#1a2036"} />
+      <rect x="0" y="154" width="900" height="46" fill={uv ? "#0d0f30" : "#141a2c"} />
       {/* back row — its own slow clock */}
       <g style={{ animation: "be-sway 4.4s ease-in-out infinite", transformOrigin: "50% 100%" }}>
         {[70, 190, 310, 545, 665, 790].map((x, i) => (
@@ -92,10 +108,18 @@ export function Crowd({ uv = false }: { uv?: boolean }) {
         ))}
         <SleepingCat x={438} y={48} s={0.62} />
       </g>
-      {/* front row — offset clock, never in sync with the back */}
+      {/* middle row — offset clock, never in sync with the back */}
       <g style={{ animation: "be-sway 5.2s ease-in-out -2.1s infinite", transformOrigin: "50% 100%" }}>
         {[130, 255, 380, 500, 620, 745, 855].map((x, i) => (
           <Bust key={x} x={x} y={92} s={1.05} shirt={SHIRTS[(i + 3) % SHIRTS.length]} skin={SKINS[(i + 2) % SKINS.length]} hairUp={i % 4 === 2} />
+        ))}
+      </g>
+      {/* front row — nearest the glass, biggest, and on a third clock. The
+          stands own the bottom of the page now, so they are a room with depth
+          rather than one strip of heads scaled up to fill it. */}
+      <g style={{ animation: "be-sway 6.1s ease-in-out -3.6s infinite", transformOrigin: "50% 100%" }}>
+        {[60, 200, 330, 455, 585, 700, 830].map((x, i) => (
+          <Bust key={x} x={x} y={150} s={1.22} shirt={SHIRTS[(i + 5) % SHIRTS.length]} skin={SKINS[(i + 1) % SKINS.length]} hairUp={i % 3 === 0} />
         ))}
       </g>
     </svg>

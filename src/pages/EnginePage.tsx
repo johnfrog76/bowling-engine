@@ -30,9 +30,9 @@ import { Overhead } from "../ui/Overhead";
 import { Crowd } from "../ui/Crowd";
 import { CoachPanel } from "../ui/Coach";
 import { Scoreboard } from "../ui/Scoreboard";
-import { BowlerFigure } from "../ui/Bowlers";
-import { bowlerBall, bowlerLabel } from "../ui/roster";
-import { rollForSkill } from "../ui/skill";
+import { BowlerFigure, Trophy } from "../ui/Bowlers";
+import { bowlerBall, bowlerChrome, bowlerLabel } from "../ui/roster";
+import { rollForSkill, skillTrophy } from "../ui/skill";
 import { Controls } from "../ui/Controls";
 import { DEFAULT_PLAYERS, DEFAULT_SETTINGS, type PlayerConfig, type Settings } from "../ui/settings";
 import { useCompactLayout } from "../ui/useCompactLayout";
@@ -149,6 +149,7 @@ const useStyles = makeStyles({
     zIndex: 2,
     width: "104px",
     height: "116px",
+    "@media (max-width: 640px)": { width: "76px", height: "86px", top: "6px", right: "6px" },
     borderRadius: "8px",
     border: `1px solid ${art.border}`,
     background: "rgba(8,7,16,0.62)",
@@ -166,7 +167,144 @@ const useStyles = makeStyles({
     color: art.muted,
   },
   chipBody: { position: "absolute", inset: "16px 6px 5px" },
-  lower: { display: "flex", gap: "12px", minHeight: "132px" },
+  // Side by side on desktop; STACKED on a phone, where sharing the width left
+  // the card about 220px across — at which point no amount of font work makes
+  // a ten-frame sheet readable. The card needs the full width more than the
+  // coach needs to sit beside it.
+  middle: {
+    display: "flex",
+    gap: "12px",
+    height: "168px",
+    flexShrink: 0,
+    // COLUMN-REVERSE ON A PHONE (John): the card comes first, right under the
+    // throw that just changed it, and the coach drops to sit against the
+    // crowd it is talking to. Source order stays coach-then-card because that
+    // is the reading order on a wide screen, where they sit side by side.
+    "@media (max-width: 640px)": { flexDirection: "column-reverse", height: "auto" },
+  },
+  coachPane: {
+    width: "240px",
+    flexShrink: 0,
+    "@media (max-width: 640px)": { width: "100%", height: "92px" },
+  },
+  cardPane: {
+    flexGrow: 1,
+    minWidth: 0,
+    "@media (max-width: 640px)": { flexGrow: 0, height: "132px", width: "100%" },
+  },
+  // The card stack, turned on its side relative to the house: same window
+  // trick, but travelling DOWN so the two motions never read as one.
+  cardStack: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    display: "flex",
+    flexDirection: "column",
+    transitionProperty: "transform",
+    transitionDuration: "700ms",
+    transitionTimingFunction: "cubic-bezier(0.65, 0, 0.35, 1)",
+    willChange: "transform",
+  },
+  cardSlot: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0, width: "100%" },
+  // The bowler is boxed exactly like the overhead — same border, ground and
+  // blur — so the lane's two corner readouts are one furniture family. It
+  // sits under the lane's own meta label, top left.
+  // THE BOWLER, AS A BROADCAST CUT-IN. Same border and ground as the overhead
+  // so the lane's two readouts stay one family, but bigger, because this one
+  // is a person and the other is a diagram.
+  bowlerChip: {
+    position: "absolute",
+    top: "12px",
+    left: "14px",
+    zIndex: 2,
+    width: "158px",
+    height: "246px",
+    borderRadius: "8px",
+    border: `1px solid ${art.border}`,
+    background: "rgba(8,7,16,0.62)",
+    backdropFilter: "blur(2px)",
+    pointerEvents: "none",
+    // THE CAP. A broadcast cut-in is capped by the show's colour along its
+    // top edge — the one place the frame admits it was put there by someone.
+    borderTopWidth: "4px",
+    borderTopStyle: "solid",
+    "@media (max-width: 640px)": { width: "104px", height: "166px", top: "10px", left: "8px", borderTopWidth: "3px" },
+  },
+  // Air under the feet. The plate crosses the box's bottom edge, so the
+  // figure has to stop well short of it — standing on the nameplate reads as
+  // a crop, and the whole point of the cut-in is that they are standing in it.
+  bowlerArt: {
+    position: "absolute",
+    inset: "10px 10px 44px",
+    "@media (max-width: 640px)": { inset: "8px 8px 32px" },
+  },
+  chipTrophy: {
+    position: "absolute",
+    top: "6px",
+    right: "6px",
+    width: "28px",
+    height: "32px",
+    "@media (max-width: 640px)": { width: "20px", height: "24px" },
+  },
+  /**
+   * THE NAMEPLATE, seated inside the box along its floor.
+   *
+   * It hung off the bottom-left corner for a while, the way a broadcast lower
+   * third does. Inside is quieter: the cut-in stays one clean rectangle, and
+   * the name reads as part of the fitting rather than a second object laid
+   * over it. The colour it lost when the fill came off is carried by the bar
+   * and the cap, which is enough.
+   */
+  namePlate: {
+    position: "absolute",
+    left: "10px",
+    right: "10px",
+    bottom: "10px",
+    zIndex: 3,
+    height: "26px",
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    paddingLeft: 0,
+    // NO FILL. A solid slab of colour behind the name shouted over the shot;
+    // the bar alone carries the brand and the name is simply lit. Same
+    // information, a fraction of the volume.
+    "@media (max-width: 640px)": { height: "18px", left: "7px", right: "7px", bottom: "7px" },
+  },
+  // The colour bar down the leading edge — now the ONLY place the plate is
+  // coloured, matching the cap above it so the two read as one fitting.
+  plateFlash: {
+    width: "5px",
+    height: "100%",
+    borderRadius: "1px",
+    flexShrink: 0,
+    "@media (max-width: 640px)": { width: "4px" },
+  },
+  plateName: {
+    fontFamily: art.mono,
+    fontSize: "0.68rem",
+    fontWeight: 700,
+    letterSpacing: "0.16em",
+    // Inverted: light type in open air rather than dark type on a slab. It
+    // hangs below the box over the lane, so it carries its own shadow instead
+    // of a panel to sit on.
+    color: art.text,
+    textShadow: "0 1px 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.8)",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    "@media (max-width: 640px)": { fontSize: "0.56rem", letterSpacing: "0.1em" },
+  },
+  laneRoll: {
+    position: "absolute",
+    top: "276px",
+    left: "14px",
+    zIndex: 3,
+    width: "158px",
+    minWidth: 0,
+    "@media (max-width: 640px)": { top: "188px", left: "8px", width: "104px" },
+  },
   pane: {
     position: "relative",
     border: `1px solid ${art.border}`,
@@ -188,36 +326,31 @@ const useStyles = makeStyles({
     background: "rgba(8,7,16,0.6)",
     padding: "2px 7px",
     borderRadius: "4px",
-    borderLeft: `2px solid ${art.accent}`,
+    borderLeft: `3px solid ${art.accent}`,
     pointerEvents: "none",
   },
-  paneLabelUp: { color: art.bg, background: art.accent, borderLeftColor: art.accent },
   paneFill: { position: "absolute", inset: 0 },
   padded: { position: "absolute", inset: "18px 8px 6px" },
-  // The scoresheets are a BAND, not a panel that grows with the page. Sized by
-  // aspect ratio they took nearly half the height at desktop width and left the
-  // lanes a sliver — and the lane is what people came to watch. A fixed band
-  // keeps the sheet legible (its SVG scales to fit) and gives the rest back.
-  boards: { display: "flex", flexDirection: "column", gap: "8px", flexShrink: 0 },
-  board: {
-    border: `1px solid ${art.border}`,
-    borderRadius: "10px",
-    background: art.panel,
-    padding: "2px 4px",
-    height: "116px",
-    "@media (max-width: 640px)": { height: "96px" },
-  },
 });
 
 function Pane({
   label,
-  highlight,
+  accent,
   children,
   style,
   className,
 }: {
-  label: string;
-  highlight?: boolean;
+  /** Omitted where the pane's contents already say what it is. */
+  label?: string;
+  /**
+   * Recolours the chip's leading rule — nothing else.
+   *
+   * Every pane's caption sits at one volume: muted type on a dark ground.
+   * A pane that needs to say WHOSE it is says so in that rule, in the
+   * bowler's own colour, rather than by lighting the whole chip up and
+   * outshouting the panes either side of it.
+   */
+  accent?: string;
   children: ReactNode;
   style?: React.CSSProperties;
   className?: string;
@@ -225,7 +358,11 @@ function Pane({
   const s = useStyles();
   return (
     <div className={`${s.pane} ${className ?? ""}`} style={style}>
-      <span className={`${s.paneLabel} ${highlight ? s.paneLabelUp : ""}`}>{label}</span>
+      {label && (
+        <span className={s.paneLabel} style={accent ? { borderLeftColor: accent } : undefined}>
+          {label}
+        </span>
+      )}
       <div className={s.paneFill}>{children}</div>
     </div>
   );
@@ -409,7 +546,9 @@ export function EnginePage() {
    * just fell.
    */
   const viewIdx = Math.min(lastBy ?? up ?? 0, count - 1);
-  const totals = match.games.map((_, i) => i);
+  const viewMetal = skillTrophy(players[viewIdx].skill);
+  // One colour per bowler, used everywhere the page says WHOSE something is.
+  const viewChrome = bowlerChrome(players[viewIdx].kind);
 
   const newGame = () => {
     setMatch(emptyMatch(count));
@@ -432,11 +571,10 @@ export function EnginePage() {
           the house can be longer than the roster later — idle lanes either
           side — without any of this changing. */}
       <div className={s.lanes}>
-        <Pane
-          label={`LANE ${7 + viewIdx} · ${bowlerLabel(players[viewIdx].kind).toUpperCase()}${up === viewIdx ? " · UP" : ""}`}
-          highlight
-          style={{ flex: 1, minHeight: compact ? "260px" : 0 }}
-        >
+        {/* NO PANE LABEL — the cut-in's nameplate already says who is at the
+            line and which lane it is, and a caption in the corner repeating it
+            was the kind of chrome that makes a shot look like a diagram. */}
+        <Pane style={{ flex: 1, minHeight: compact ? "260px" : 0 }}>
           <div
             className={s.house}
             style={{
@@ -466,57 +604,80 @@ export function EnginePage() {
               <Overhead standing={lastBy === viewIdx ? shownStanding : idleStanding(match, viewIdx)} />
             </div>
           </div>
-        </Pane>
-        {!compact && (
-          <Pane label="BOWLERS" style={{ width: "180px", flexShrink: 0 }}>
-            <div
-              className={s.padded}
-              style={{ display: "flex", flexDirection: "column", gap: "6px", justifyContent: "space-around" }}
-            >
-              {players.map((p, i) => (
-                <div key={i} style={{ position: "relative", flex: 1, minHeight: 0 }}>
-                  <div style={{ position: "absolute", inset: 0, opacity: up === i ? 1 : 0.42 }}>
-                    <BowlerFigure kind={p.kind} starlight={settings.starlight} />
-                  </div>
-                  {/* THE BALL IS THROWN BY A PERSON, so the button that throws
-                      it is LOCKED AT THAT PERSON'S FEET rather than floating
-                      over the stage where it belongs to nobody. One Roll each,
-                      live only for whoever is up — which makes whose turn it
-                      is something you can see rather than a label to read. */}
-                  {!settings.autoRoll && (
-                    <Button
-                      appearance={up === i ? "primary" : "secondary"}
-                      size="small"
-                      disabled={up !== i || over || busy}
-                      onClick={() => rollRef.current()}
-                      style={{ position: "absolute", left: "50%", bottom: 0, transform: "translateX(-50%)", minWidth: "74px" }}
-                    >
-                      Roll
-                    </Button>
-                  )}
-                </div>
-              ))}
+          {/* WHOEVER IS AT THE LINE, boxed like the overhead and standing
+              under the lane's own label — they belong to the lane, not to a
+              pane off to the side. The label sits along the BOTTOM here
+              rather than the top, because the figure stands on it; the metal
+              they have earned goes in the top corner, where it reads as a
+              shelf rather than something they are carrying. */}
+          <div className={s.bowlerChip} style={{ borderTopColor: viewChrome }}>
+            <div className={s.bowlerArt}>
+              <BowlerFigure kind={players[viewIdx].kind} starlight={settings.starlight} />
             </div>
-          </Pane>
-        )}
+            {viewMetal && (
+              <div className={s.chipTrophy}>
+                <Trophy metal={viewMetal} />
+              </div>
+            )}
+            <span className={s.namePlate}>
+              <span className={s.plateFlash} style={{ background: viewChrome }} />
+              <span className={s.plateName}>
+                {bowlerLabel(players[viewIdx].kind).toUpperCase()} &middot; LANE {7 + viewIdx}
+              </span>
+            </span>
+          </div>
+          {!settings.autoRoll && (
+            <Button
+              appearance="primary"
+              size="small"
+              disabled={up !== viewIdx || over || busy}
+              onClick={() => rollRef.current()}
+              className={s.laneRoll}
+            >
+              Roll
+            </Button>
+          )}
+        </Pane>
       </div>
 
-      <div className={s.lower}>
-        <Pane label="COACH" style={{ width: "240px", flexShrink: 0 }}>
+      {/* ── the coach, and the card of whoever is bowling ─────────────────
+          One card, not a stack. Two sheets side by side made you find your
+          bowler before you could read a score; the card belongs to whoever is
+          at the line, and the others are a scroll away rather than a search.
+
+          Same sprite trick as the house, turned ninety degrees: the cards are
+          stacked and the window slides DOWN to the one in play. Vertical on
+          purpose — the house travels sideways, so if the cards did too the two
+          motions would read as one thing sliding, and they are not related. */}
+      <div className={s.middle}>
+        <Pane label="COACH" className={s.coachPane}>
           <CoachPanel mood={shownMood} />
         </Pane>
-        <Pane label="CROWD" style={{ flex: 1, minWidth: 0 }}>
-          <Crowd uv={settings.starlight} />
+        <Pane
+          label={`SCORECARD · ${bowlerLabel(players[viewIdx].kind).toUpperCase()}`}
+          accent={viewChrome}
+          className={s.cardPane}
+        >
+          <div
+            className={s.cardStack}
+            style={{
+              height: `${count * 100}%`,
+              transform: `translateY(-${viewIdx * (100 / count)}%)`,
+            }}
+          >
+            {players.map((p, i) => (
+              <div key={i} className={s.cardSlot}>
+                <Scoreboard game={match.games[i]} playerName={bowlerLabel(p.kind).toUpperCase()} compact={compact} />
+              </div>
+            ))}
+          </div>
         </Pane>
       </div>
 
-      <div className={s.boards}>
-        {totals.map((i) => (
-          <div key={i} className={s.board} style={up === i ? { borderColor: art.accent } : undefined}>
-            <Scoreboard game={match.games[i]} playerName={`${bowlerLabel(players[i].kind).toUpperCase()}`} />
-          </div>
-        ))}
-      </div>
+      {/* ── the stands own the bottom ─────────────────────────────────── */}
+      <Pane label="CROWD" style={{ height: compact ? "120px" : "190px", flexShrink: 0 }}>
+        <Crowd uv={settings.starlight} />
+      </Pane>
     </div>
   );
 
@@ -577,8 +738,18 @@ export function EnginePage() {
               Roll
             </Button>
           )}
-          <Button appearance="secondary" icon={<ReplayRegular />} onClick={newGame}>
-            New game
+          {/* ICON ONLY ON A PHONE. "New game" wrapped to two lines in the bar
+              and pushed the score off centre; the icon says it on its own, and
+              the label survives as the accessible name rather than being lost
+              with the text. */}
+          <Button
+            appearance="secondary"
+            icon={<ReplayRegular />}
+            onClick={newGame}
+            aria-label="New game"
+            title="New game"
+          >
+            {compact ? undefined : "New game"}
           </Button>
           <Button
             appearance={drawer ? "primary" : "secondary"}
