@@ -1,9 +1,16 @@
 import {
+  allRolls,
+  applyMatchRoll,
   applyRoll,
+  bowlerUp,
   emptyGame,
+  emptyMatch,
   gameFromRolls,
   isGutterTrigger,
+  isMatchOver,
   isSplit,
+  matchFromRolls,
+  matchScores,
   pinsNeededNextFrame,
   runningTotal,
   scoreFrame,
@@ -166,6 +173,49 @@ export const CHECKS: (() => CheckResult)[] = [
       const gone = pinsNeededNextFrame(g, 200);
       t(!gone.feasible, "200 in two frames is gone, and the engine says so");
       t(isGutterTrigger(2) && !isGutterTrigger(3), "the gutter threshold sits at 2");
+    }),
+
+  () =>
+    group("Two bowlers, one derived turn", (t) => {
+      let m = emptyMatch(2);
+      t(bowlerUp(m) === 0, "the first bowler in the roster is up");
+      m = applyMatchRoll(m, 7);
+      t(bowlerUp(m) === 0, "a leave keeps the lane — a second ball is owed");
+      m = applyMatchRoll(m, 2);
+      t(bowlerUp(m) === 1, "an open frame passes the lane");
+      // A strike ends the frame after ONE ball — the case a turn counter has
+      // to special-case. Nothing flips here; the frame index simply advanced.
+      m = applyMatchRoll(m, 10);
+      t(bowlerUp(m) === 0, "a strike passes it back after a single ball");
+
+      // The 10th frame holds the lane for all three of its balls.
+      const nineOpen = Array<number[]>(9).fill([4, 4]).flat();
+      let tenth = matchFromRolls([nineOpen, nineOpen]);
+      tenth = applyMatchRoll(tenth, 10);
+      tenth = applyMatchRoll(tenth, 10);
+      t(bowlerUp(tenth) === 0, "the 10th frame keeps the lane through its fills");
+      tenth = applyMatchRoll(tenth, 10);
+      t(bowlerUp(tenth) === 1, "and passes it only once the fills have landed");
+
+      // The claim the whole match layer rests on: no lookback crosses a bowler
+      // boundary, so interleaving two games cannot change either score.
+      const a = simulateAutobowl(8);
+      const b = simulateAutobowl(17);
+      const queues = [allRolls(a), allRolls(b)];
+      let match = emptyMatch(2);
+      let guard = 0;
+      while (!isMatchOver(match) && guard++ < 100) {
+        const up = bowlerUp(match);
+        if (up === null) break;
+        const next = queues[up].shift();
+        if (next === undefined) break;
+        match = applyMatchRoll(match, next);
+      }
+      const [sa, sb] = matchScores(match);
+      t(
+        sa === totalScore(a) && sb === totalScore(b),
+        `interleaved ${sa}/${sb} should equal solo ${totalScore(a)}/${totalScore(b)}`,
+      );
     }),
 ];
 

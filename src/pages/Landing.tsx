@@ -241,8 +241,10 @@ const NOT_SUPPORTED: Array<[string, string, boolean]> = [
   ["Lookback (strike/spare bonus resolution)", "Supported", true],
   ["10th frame fill-ball exception", "Supported", true],
   ["Which pins are standing — leaves and splits (the 7–10)", "Supported — an optional pin-identity layer; scoring itself only ever reads counts", true],
+  ["More than one bowler", "Supported — N independent games, turn order derived rather than counted", true],
+  ["Saving, restoring, undo, replay", "Supported — a game is plain JSON; no persistence layer required", true],
   ["Ball physics, hook, lane oil, pin carry", "Not supported — not the point", false],
-  ["Multiplayer / league history / persistence", "Not supported — score one game at a time", false],
+  ["League standings, handicaps, season history", "Not supported — this scores games; it doesn't run a league", false],
 ];
 
 export function Landing() {

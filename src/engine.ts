@@ -707,6 +707,97 @@ export function simulateAutobowl(seed = 1): Game {
   return game;
 }
 
+// ── More than one bowler ────────────────────────────────────────────────────
+//
+// A match is N independent games and ONE derived question: who is up?
+//
+// Nothing about scoring changes, and that is the point. No lookback ever
+// crosses a bowler boundary — a strike in one game reaches into that same
+// game's next two rolls and nowhere else — so a match needs no scoring code of
+// its own. It needs a turn order, and a turn order is a FACT ABOUT THE GAMES.
+//
+// WHICH MEANS THERE IS NO TURN COUNTER, for exactly the reason there is no
+// frame counter. The obvious implementation holds a `currentPlayer` and flips
+// it when a frame ends — and then a strike ends a frame after ONE roll, so the
+// flip has to be special-cased, and the 10th frame takes three rolls without
+// passing the lane at all, so that needs a second special case, and from there
+// the counter is a lie every later rule is written around. It is the same bug
+// as the double-incremented roll count, one level up.
+//
+// So `bowlerUp` derives it: the bowler up is the one with the FURTHEST TO GO.
+// A strike passes the lane because it completed a frame, which advanced that
+// game's `currentFrameIndex` past everyone else's — not because anything was
+// told to flip. The 10th frame keeps the lane for all three of its balls
+// because `currentFrameIndex` stays at 9 until the fill balls land. The frame
+// that breaks every other rule needs no special case here at all.
+//
+// WHAT A MATCH DELIBERATELY DOES NOT HOLD: names, skins, colours, lanes,
+// handicaps, or standings. A bowler IS an index. Which lane they stand on and
+// what they are called belong to whatever is presenting this — the same
+// boundary the rest of the file keeps.
+
+/**
+ * N games in progress, bowled in turn. One game is a match of one, and behaves
+ * exactly as it did before — there is no separate single-player path.
+ */
+export interface Match {
+  games: Game[];
+}
+
+/** A match of `bowlerCount` empty games. */
+export const emptyMatch = (bowlerCount: number): Match => ({
+  games: Array.from({ length: Math.max(1, bowlerCount) }, () => emptyGame()),
+});
+
+/** A match built from one flat roll list per bowler — the test/replay entry point. */
+export const matchFromRolls = (perBowler: readonly (readonly Roll[])[]): Match => ({
+  games: perBowler.map((rolls) => gameFromRolls(rolls)),
+});
+
+/**
+ * Whose turn it is — an index into `games`, or null when every game is over.
+ *
+ * The bowler up is the one whose game has the furthest to go, ties broken by
+ * position in the roster, and a finished game is never up. That is the whole
+ * rule; everything a turn counter would need a special case for falls out of
+ * it, because `currentFrameIndex` already knows when a frame is done.
+ */
+export function bowlerUp(match: Match): number | null {
+  let up: number | null = null;
+  let furthest = Infinity;
+  for (let i = 0; i < match.games.length; i++) {
+    const frame = currentFrameIndex(match.games[i]);
+    if (frame === null) continue; // done bowling — the lane skips them
+    if (frame < furthest) {
+      furthest = frame;
+      up = i;
+    }
+  }
+  return up;
+}
+
+/**
+ * Apply one roll to whoever is up, returning a NEW match.
+ *
+ * The caller decides `bowlerUp` before it rolls, so it already knows who threw
+ * — which is why nothing here records it. "Who rolled last" is not stored for
+ * the same reason `isStrike` is not stored.
+ *
+ * Rolls into a finished match are ignored, matching `applyRoll`.
+ */
+export function applyMatchRoll(match: Match, pins: Roll | readonly PinId[]): Match {
+  const up = bowlerUp(match);
+  if (up === null) return match;
+  const games = match.games.map((g, i) => (i === up ? applyRoll(g, pins) : g));
+  return { games };
+}
+
+/** Every game finished. */
+export const isMatchOver = (match: Match): boolean => bowlerUp(match) === null;
+
+/** Each bowler's score so far, in roster order. */
+export const matchScores = (match: Match): number[] => match.games.map(totalScore);
+
 // ── React adapter ───────────────────────────────────────────────────────────
 //
 // The ONLY React in this file, and deliberately thin: a consumer using Vue,

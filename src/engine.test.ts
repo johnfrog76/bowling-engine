@@ -1,18 +1,24 @@
 import {
   allRolls,
+  applyMatchRoll,
   applyRoll,
+  bowlerUp,
   classifyMood,
   currentFrameIndex,
   emptyGame,
+  emptyMatch,
   frameScores,
   gameFromRolls,
   isFrameComplete,
   isGameOver,
   isGutterTrigger,
+  isMatchOver,
   isOpen,
   isSpare,
   isSplit,
   isStrike,
+  matchFromRolls,
+  matchScores,
   mulberry32,
   pinsNeededNextFrame,
   runningTotal,
@@ -23,6 +29,7 @@ import {
   FULL_RACK,
   PERFECT_GAME,
   type Game,
+  type Match,
 } from "./engine";
 
 // These tests exist because the consuming decks make factual claims on screen.
@@ -554,5 +561,140 @@ describe("the two games everybody knows", () => {
       expect(totalScore(game)).toBe(runningTotal(game, 9));
     }
     expect(totalScore(game)).toBe(PERFECT_GAME);
+  });
+});
+
+describe("a match — N games and one derived question", () => {
+  it("starts with the first bowler in the roster up", () => {
+    expect(bowlerUp(emptyMatch(2))).toBe(0);
+  });
+
+  it("a match of one behaves exactly like a lone game", () => {
+    // There is no separate single-player path — solo is N=1, not a branch.
+    let solo = emptyMatch(1);
+    for (const pins of PERFECT_ROLLS) solo = applyMatchRoll(solo, pins);
+    expect(matchScores(solo)).toEqual([PERFECT_GAME]);
+    expect(isMatchOver(solo)).toBe(true);
+  });
+
+  it("holds the lane for a second ball when the first leaves pins", () => {
+    const match = applyMatchRoll(emptyMatch(2), 7);
+    // Frame 1 is not finished, so bowler 0 is still up. No flip.
+    expect(bowlerUp(match)).toBe(0);
+  });
+
+  it("passes the lane after ONE roll when that roll is a strike", () => {
+    // The case a turn counter has to special-case: a strike ends the frame
+    // after one ball. Nothing flips here — bowler 0's frame index advanced.
+    const match = applyMatchRoll(emptyMatch(2), 10);
+    expect(bowlerUp(match)).toBe(1);
+  });
+
+  it("passes the lane after TWO rolls when the frame is open", () => {
+    let match = applyMatchRoll(emptyMatch(2), 7);
+    match = applyMatchRoll(match, 2);
+    expect(bowlerUp(match)).toBe(1);
+  });
+
+  it("comes back to the first bowler once everyone has bowled the frame", () => {
+    let match = applyMatchRoll(emptyMatch(2), 10); // bowler 0 strikes, lane passes
+    match = applyMatchRoll(match, 10); // bowler 1 strikes, lane passes back
+    expect(bowlerUp(match)).toBe(0);
+    expect(currentFrameIndex(match.games[0])).toBe(1);
+    expect(currentFrameIndex(match.games[1])).toBe(1);
+  });
+
+  it("alternates cleanly across three bowlers", () => {
+    let match = emptyMatch(3);
+    const seen: (number | null)[] = [];
+    for (let i = 0; i < 6; i++) {
+      seen.push(bowlerUp(match));
+      match = applyMatchRoll(match, 10); // everyone strikes: one ball each
+    }
+    expect(seen).toEqual([0, 1, 2, 0, 1, 2]);
+  });
+
+  it("keeps the lane for all three balls of the 10th frame", () => {
+    // The frame that breaks every other rule needs no special case:
+    // currentFrameIndex stays at 9 until the fill balls have landed.
+    const NINE_OPEN = Array<number[]>(9).fill([4, 4]).flat();
+    let match = matchFromRolls([NINE_OPEN, NINE_OPEN]);
+    expect(bowlerUp(match)).toBe(0);
+    match = applyMatchRoll(match, 10); // strike in the 10th — earns two fills
+    expect(bowlerUp(match)).toBe(0);
+    match = applyMatchRoll(match, 10); // first fill
+    expect(bowlerUp(match)).toBe(0);
+    match = applyMatchRoll(match, 10); // second fill — NOW the lane passes
+    expect(bowlerUp(match)).toBe(1);
+  });
+
+  it("skips a bowler whose game is over and lets the other finish", () => {
+    const match = matchFromRolls([PERFECT_ROLLS, []]);
+    expect(isGameOver(match.games[0])).toBe(true);
+    // Bowler 0 is done; every remaining roll belongs to bowler 1.
+    expect(bowlerUp(match)).toBe(1);
+    expect(isMatchOver(match)).toBe(false);
+  });
+
+  it("is over only when every game is over, and then ignores further rolls", () => {
+    const match = matchFromRolls([PERFECT_ROLLS, PERFECT_ROLLS]);
+    expect(isMatchOver(match)).toBe(true);
+    expect(bowlerUp(match)).toBeNull();
+    expect(applyMatchRoll(match, 10)).toBe(match); // a held-down button, not an error
+  });
+
+  it("never mutates the match it was handed", () => {
+    const before = emptyMatch(2);
+    const after = applyMatchRoll(before, 7);
+    expect(before.games[0].frames).toHaveLength(0);
+    expect(after.games[0].frames).toHaveLength(1);
+  });
+
+  it("leaves the bowlers who are not up completely untouched", () => {
+    const before = emptyMatch(2);
+    const after = applyMatchRoll(before, 7);
+    expect(after.games[1]).toBe(before.games[1]); // same reference, not a copy
+  });
+
+  // ── the claim the whole match layer rests on ──────────────────────────────
+  it("scores an interleaved match identically to the same games bowled alone", () => {
+    // No lookback ever crosses a bowler boundary. If that is true, then the
+    // order the rolls arrive in cannot matter — interleaving two games must
+    // give the same two scores as bowling them one after the other. This is
+    // the entire correctness claim of the match layer, in one assertion.
+    const a = simulateAutobowl(8);
+    const b = simulateAutobowl(17);
+    const rollsA = allRolls(a);
+    const rollsB = allRolls(b);
+
+    let match: Match = emptyMatch(2);
+    const queues = [[...rollsA], [...rollsB]];
+    let guard = 0;
+    while (!isMatchOver(match) && guard++ < 100) {
+      const up = bowlerUp(match);
+      if (up === null) break;
+      const next = queues[up].shift();
+      if (next === undefined) break;
+      match = applyMatchRoll(match, next);
+    }
+
+    expect(queues[0]).toHaveLength(0); // every roll was consumed by its owner
+    expect(queues[1]).toHaveLength(0);
+    expect(matchScores(match)).toEqual([totalScore(a), totalScore(b)]);
+    expect(frameScores(match.games[0])).toEqual(frameScores(a));
+    expect(frameScores(match.games[1])).toEqual(frameScores(b));
+  });
+
+  it("carries pin identity through a match the same way a lone game does", () => {
+    // Pin-tracked entry has to survive interleaving too — the leave belongs to
+    // the bowler who threw it, not to the lane.
+    let match = emptyMatch(2);
+    match = applyMatchRoll(match, [1, 2, 3, 5, 8, 9] as const); // bowler 0 leaves the 4-6-7-10
+    expect(bowlerUp(match)).toBe(0); // a leave keeps the lane — second ball owed
+    match = applyMatchRoll(match, [4, 6] as const); // misses the corners, frame closes
+    match = applyMatchRoll(match, [1, 2, 4] as const); // now bowler 1's own leave
+    expect(standingAfter(match.games[0].frames[0], 0)).toEqual([4, 6, 7, 10]);
+    expect(standingAfter(match.games[0].frames[0], 1)).toEqual([7, 10]);
+    expect(standingAfter(match.games[1].frames[0], 0)).toEqual([3, 5, 6, 7, 8, 9, 10]);
   });
 });

@@ -55,8 +55,10 @@ Stated rather than hidden:
 | 10th frame fill-ball exception | Supported |
 | Chained strikes ("turkeys" and beyond) | Supported |
 | Which pins are standing — leaves and splits (the 7-10) | Supported — an optional pin-identity layer; scoring itself only ever reads counts |
+| More than one bowler | Supported — N independent games, turn order derived rather than counted |
+| Saving, restoring, undo, replay | Supported — a `Game` is plain JSON, with no layer required. See below |
 | Ball physics, hook, lane oil, pin carry | **Not supported — not the point** |
-| Multiplayer / league history / persistence | **Not supported — score one game at a time** |
+| League standings, handicaps, season history | **Not supported — this scores games; it doesn't run a league** |
 
 ## Using the engine directly
 
@@ -75,6 +77,54 @@ scoreFrame(autobowlGame, 0);
 runningTotal(autobowlGame, 9);
 // running total through the 10th frame
 ```
+
+## More than one bowler
+
+A match is N independent games and one derived question: who's up?
+
+```ts
+import { emptyMatch, bowlerUp, applyMatchRoll, matchScores } from "./src/engine";
+
+let match = emptyMatch(2);
+bowlerUp(match); // 0 — first in the roster
+match = applyMatchRoll(match, 10); // a strike ends the frame after ONE ball...
+bowlerUp(match); // 1 — ...so the lane passes, with no special case
+matchScores(match); // [10-ish once it resolves, 0]
+```
+
+No scoring code changes, because **no lookback ever crosses a bowler
+boundary** — a strike reaches into its own game's next two rolls and nowhere
+else. So a match needs only a turn order, and the turn order is a fact about
+the games rather than a counter beside them.
+
+That distinction is the same one the rest of the engine makes. The obvious
+implementation holds a `currentPlayer` and flips it when a frame ends — then
+a strike ends a frame after one ball, so the flip needs a special case; then
+the 10th frame takes three balls without passing the lane, so it needs
+another. `bowlerUp` instead asks which game has the furthest to go. A strike
+passes the lane because it completed a frame; the 10th frame holds the lane
+because `currentFrameIndex` stays at 9 until the fill balls land. The frame
+that breaks every other rule needs no special case here at all.
+
+A match holds no names, skins, colours or lanes — a bowler is an index. Those
+belong to whatever is presenting it. And a match of one is just `N = 1`; there
+is no separate single-player path.
+
+## Saving a game
+
+There's no persistence layer because there's nothing to persist but data:
+
+```ts
+localStorage.setItem("game", JSON.stringify(game));
+const restored: Game = JSON.parse(localStorage.getItem("game")!);
+```
+
+A `Game` is `{ frames: [{ rolls: [...] }] }` and nothing else — no class, no
+methods, no cached `isStrike` or `frameScore` to rehydrate or to come back
+stale. `gameFromRolls` rebuilds one from a flat roll list, every intermediate
+game is a value you can keep for undo, and two games can be compared with a
+deep equal. All of that is a consequence of never storing what can be derived,
+which is why it costs nothing to offer.
 
 ## Development
 
