@@ -4,7 +4,7 @@ import { AddRegular, SubtractRegular } from "@fluentui/react-icons";
 import { art } from "./theme";
 import { BOWLER_KINDS, bowlerLabel } from "./roster";
 import { SKILL_LEVELS, skillLabel, skillTrophy, type SkillLevel } from "./skill";
-import { Trophy } from "./Bowlers";
+import { BallMark, Trophy } from "./Bowlers";
 import { MAX_BOWLERS, MIN_BOWLERS, TOGGLES, type PlayerConfig, type Settings } from "./settings";
 
 /**
@@ -39,20 +39,22 @@ const groupLabel: React.CSSProperties = {
 };
 
 /**
- * What a level looks like: the ball you always have, plus whatever metal the
- * level has earned. Drawn at picker size from the same two components the
- * lane uses, so there is one source for "League is silver".
+ * What a level has earned, at a size worth looking at.
+ *
+ * This began as a mark inside each Skill button and was wrong there: three
+ * emblems in a row of buttons is three tiny ornaments competing with the word
+ * that already says it, and at 14px a trophy is a smudge. One emblem on the
+ * fieldset instead, showing the level currently CHOSEN — bigger, calmer, and
+ * it decorates the bowler rather than annotating a control.
  */
-function SkillMark({ skill }: { skill: SkillLevel }) {
+function SkillEmblem({ skill }: { skill: SkillLevel }) {
   const metal = skillTrophy(skill);
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, height: 20 }} aria-hidden="true">
-      <span style={{ width: 14, height: 14, borderRadius: "50%", background: art.accent, opacity: 0.85 }} />
-      {metal && (
-        <span style={{ width: 16, height: 20 }}>
-          <Trophy metal={metal} />
-        </span>
-      )}
+    <span
+      aria-hidden="true"
+      style={{ display: "block", width: 40, height: metal ? 44 : 40, opacity: metal ? 1 : 0.85 }}
+    >
+      {metal ? <Trophy metal={metal} /> : <BallMark />}
     </span>
   );
 }
@@ -69,15 +71,12 @@ function Segmented<T extends string>({
   onChange,
   label,
   format,
-  adorn,
 }: {
   options: readonly T[];
   value: T;
   onChange: (v: T) => void;
   label: string;
   format: (v: T) => string;
-  /** Optional graphic shown beside each option's name. */
-  adorn?: (v: T) => ReactElement;
 }) {
   return (
     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }} role="group" aria-label={label}>
@@ -102,10 +101,7 @@ function Segmented<T extends string>({
               fontWeight: on ? 700 : 400,
             }}
           >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              {adorn?.(o)}
-              {format(o)}
-            </span>
+            {format(o)}
           </button>
         );
       })}
@@ -133,6 +129,7 @@ function PlayerFieldset({
   return (
     <fieldset
       style={{
+        position: "relative",
         border: `1px solid ${art.border}`,
         borderRadius: 8,
         padding: "0.5rem 0.9rem 0.9rem",
@@ -140,6 +137,11 @@ function PlayerFieldset({
         minWidth: 0,
       }}
     >
+      {/* The level this bowler is at, worn on the frame — same emblem the
+          figure on the lane is standing next to. */}
+      <span style={{ position: "absolute", top: 10, right: 12, pointerEvents: "none" }}>
+        <SkillEmblem skill={player.skill} />
+      </span>
       <legend
         style={{
           fontFamily: art.mono,
@@ -165,16 +167,12 @@ function PlayerFieldset({
         </div>
         <div>
           <div style={groupLabel}>SKILL</div>
-          {/* The picker shows the same thing the bowler is holding — ball,
-              silver, gold — so choosing a level and reading the lane are the
-              same vocabulary rather than two that have to be matched up. */}
           <Segmented
             label={`${name} skill`}
             options={SKILL_LEVELS}
             value={player.skill}
             onChange={(skill) => onChange({ ...player, skill })}
             format={skillLabel}
-            adorn={(lvl) => <SkillMark skill={lvl} />}
           />
         </div>
       </div>

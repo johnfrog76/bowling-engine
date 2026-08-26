@@ -206,6 +206,21 @@ export function Trophy({ metal }: { metal: "silver" | "gold" }) {
 }
 
 /**
+ * The rookie's emblem — a house ball off the rack, in plain grey.
+ *
+ * Somebody with no metal yet still has something: the ball is what everybody
+ * starts with. Grey rather than any bowler's colour, because this says what
+ * LEVEL they are, and the level is not theirs personally.
+ */
+export function BallMark({ tint = "#8d95a3" }: { tint?: string }) {
+  return (
+    <svg viewBox="-25 -25 50 50" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
+      <BowlingBall x={0} y={0} r={21} tint={tint} />
+    </svg>
+  );
+}
+
+/**
  * The selected bowler, drawn to fill their pane.
  *
  * FIGURE ONLY — the trophy is placed by whatever frames this, not drawn in
