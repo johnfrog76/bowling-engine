@@ -159,12 +159,21 @@ const useStyles = makeStyles({
   chipLabel: {
     position: "absolute",
     top: "4px",
-    left: "7px",
+    // Centred across the chip rather than tucked in a corner — it names the
+    // camera the box IS, so it reads as a caption on the feed.
+    left: 0,
+    right: 0,
+    textAlign: "center",
     fontFamily: art.mono,
     fontSize: "0.52rem",
     fontWeight: 700,
-    letterSpacing: "0.14em",
+    // The name is two words and the chip is narrow: at the old tracking it
+    // measured a couple of pixels wider than the box and dropped to a second
+    // line. One line, always — a caption that wraps stops reading as a caption.
+    letterSpacing: "0.1em",
+    whiteSpace: "nowrap",
     color: art.muted,
+    "@media (max-width: 640px)": { fontSize: "0.46rem", letterSpacing: "0.06em" },
   },
   chipBody: { position: "absolute", inset: "16px 6px 5px" },
   // Side by side on desktop; STACKED on a phone, where sharing the width left
@@ -599,7 +608,7 @@ export function EnginePage() {
               the window rather than the strip, so it stays put while the
               camera travels and reports whatever the camera is looking at. */}
           <div className={s.overheadChip}>
-            <span className={s.chipLabel}>OVERHEAD</span>
+            <span className={s.chipLabel}>OVERHEAD CAM</span>
             <div className={s.chipBody}>
               <Overhead standing={lastBy === viewIdx ? shownStanding : idleStanding(match, viewIdx)} />
             </div>
@@ -626,11 +635,23 @@ export function EnginePage() {
               </span>
             </span>
           </div>
+          {/* THE ROLL BUTTON BELONGS TO THE LANE, NOT TO A BOWLER.
+              It was bound to the bowler in shot — disabled unless the camera
+              happened to be on whoever was up — and that deadlocked a manual
+              two-hander: the moment a frame closed the lane passed, the camera
+              stayed on whoever had just thrown, and the only Roll on screen
+              belonged to somebody whose turn it no longer was. Nothing could
+              advance it. (Autobowl escaped because it calls the driver
+              straight, and the phone escaped because the bar carries its own.)
+
+              A lane takes the next ball; WHOSE ball it is, is the engine's
+              business — `rollOnce` already asks `bowlerUp`. So the button only
+              cares whether the lane is free. */}
           {!settings.autoRoll && (
             <Button
               appearance="primary"
               size="small"
-              disabled={up !== viewIdx || over || busy}
+              disabled={over || busy}
               onClick={() => rollRef.current()}
               className={s.laneRoll}
             >
