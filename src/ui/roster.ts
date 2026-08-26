@@ -12,6 +12,25 @@ export function bowlerLabel(kind: BowlerKind): string {
 }
 
 /**
+ * A bowler's colour where CHROME needs one — the cap on their cut-in, the bar
+ * on their name plate, the rule on their scorecard chip.
+ *
+ * NOT the ball tint, and the difference matters. Those are resin colours,
+ * picked to look like a ball sitting in somebody's hands: the alien's is
+ * #2c4438 and the robot's #3c2c4a, both a shade off black, which is right for
+ * a sphere in a lit room and useless as a 4px rule on a dark panel — it would
+ * simply vanish. These are the same three identities pitched up to where they
+ * read as signal, and kept far enough apart that two bowlers on one screen are
+ * never a guess.
+ *
+ * Starlight leaves them alone. The lit balls change because the ROOM changed;
+ * the chrome is not in the room.
+ */
+export function bowlerChrome(kind: BowlerKind): string {
+  return kind === "alien" ? "#7ee787" : kind === "robot" ? "#a78bfa" : "#4fc3d9";
+}
+
+/**
  * The house ball each bowler rolls — the lane tints the throw with it.
  *
  * TWO BALLS PER BOWLER, because a bowling alley genuinely hands you a

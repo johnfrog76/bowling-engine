@@ -20,6 +20,19 @@ export function skillLabel(s: SkillLevel): string {
   return s === "rookie" ? "Rookie" : s === "league" ? "League" : "Pro";
 }
 
+/**
+ * What a skill level has to show for itself — the metal on the shelf.
+ *
+ * A rookie has only the ball. Kept here beside the levels rather than in the
+ * art, so the drawer's picker and the figure on the lane can never disagree
+ * about what League looks like.
+ */
+export type TrophyMetal = "silver" | "gold";
+
+export function skillTrophy(s: SkillLevel): TrophyMetal | null {
+  return s === "pro" ? "gold" : s === "league" ? "silver" : null;
+}
+
 interface SkillProfile {
   /** first-ball chance of a strike */
   strike: number;

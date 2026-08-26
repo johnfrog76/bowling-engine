@@ -181,7 +181,39 @@ function DevFigure({ starlight }: { starlight: boolean }) {
   );
 }
 
-/** The selected bowler, drawn to fill their pane. */
+/**
+ * What a bowler has to show for themselves.
+ *
+ * Ported from the trophy the consuming deck keeps on its wall, which already
+ * carried the metal distinction; the prop is renamed to say what it means
+ * HERE. There it marked a single second place in a decade of firsts, and it
+ * wore a "2nd" plate to say so — that is a story about that room, so it does
+ * not come across. Here the metal is the whole message.
+ */
+export function Trophy({ metal }: { metal: "silver" | "gold" }) {
+  const face = metal === "silver" ? "#b8bcc4" : "#e2b44a";
+  const deep = metal === "silver" ? "#7f858f" : "#a87f2c";
+  const plinth = metal === "silver" ? "#5c626b" : "#6e5638";
+  return (
+    <svg viewBox="-26 -40 52 56" preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "100%" }}>
+      <path d="M -13 -34 L 13 -34 L 10 -12 C 8 -4 -8 -4 -10 -12 Z" fill={face} stroke={deep} strokeWidth="1.6" />
+      <path d="M -13 -30 C -22 -30 -22 -16 -11 -14" fill="none" stroke={face} strokeWidth="3" />
+      <path d="M 13 -30 C 22 -30 22 -16 11 -14" fill="none" stroke={face} strokeWidth="3" />
+      <rect x="-4" y="-4" width="8" height="8" fill={deep} />
+      <rect x="-12" y="4" width="24" height="7" rx="2" fill={plinth} />
+    </svg>
+  );
+}
+
+/**
+ * The selected bowler, drawn to fill their pane.
+ *
+ * FIGURE ONLY — the trophy is placed by whatever frames this, not drawn in
+ * here. The three figures have three viewBoxes and three postures, so a
+ * trophy positioned inside each would be three placement problems that drift
+ * apart the moment any figure is redrawn; against the frame's own corner it
+ * lands identically for all three.
+ */
 export function BowlerFigure({ kind, starlight = false }: { kind: BowlerKind; starlight?: boolean }) {
   if (kind === "alien") return <AlienFigure starlight={starlight} />;
   if (kind === "robot") return <RobotFigure starlight={starlight} />;

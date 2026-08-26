@@ -3,7 +3,8 @@ import { Button, Switch } from "@fluentui/react-components";
 import { AddRegular, SubtractRegular } from "@fluentui/react-icons";
 import { art } from "./theme";
 import { BOWLER_KINDS, bowlerLabel } from "./roster";
-import { SKILL_LEVELS, skillLabel } from "./skill";
+import { SKILL_LEVELS, skillLabel, skillTrophy, type SkillLevel } from "./skill";
+import { Trophy } from "./Bowlers";
 import { MAX_BOWLERS, MIN_BOWLERS, TOGGLES, type PlayerConfig, type Settings } from "./settings";
 
 /**
@@ -27,8 +28,6 @@ import { MAX_BOWLERS, MIN_BOWLERS, TOGGLES, type PlayerConfig, type Settings } f
  * redesign of a row.
  */
 
-
-
 // ── Small parts ─────────────────────────────────────────────────────────────
 
 const groupLabel: React.CSSProperties = {
@@ -38,6 +37,25 @@ const groupLabel: React.CSSProperties = {
   color: art.muted,
   marginBottom: "0.6rem",
 };
+
+/**
+ * What a level looks like: the ball you always have, plus whatever metal the
+ * level has earned. Drawn at picker size from the same two components the
+ * lane uses, so there is one source for "League is silver".
+ */
+function SkillMark({ skill }: { skill: SkillLevel }) {
+  const metal = skillTrophy(skill);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, height: 20 }} aria-hidden="true">
+      <span style={{ width: 14, height: 14, borderRadius: "50%", background: art.accent, opacity: 0.85 }} />
+      {metal && (
+        <span style={{ width: 16, height: 20 }}>
+          <Trophy metal={metal} />
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * A row of exclusive options. Ported in spirit from juggling-engine's own
@@ -51,12 +69,15 @@ function Segmented<T extends string>({
   onChange,
   label,
   format,
+  adorn,
 }: {
   options: readonly T[];
   value: T;
   onChange: (v: T) => void;
   label: string;
   format: (v: T) => string;
+  /** Optional graphic shown beside each option's name. */
+  adorn?: (v: T) => ReactElement;
 }) {
   return (
     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }} role="group" aria-label={label}>
@@ -81,7 +102,10 @@ function Segmented<T extends string>({
               fontWeight: on ? 700 : 400,
             }}
           >
-            {format(o)}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {adorn?.(o)}
+              {format(o)}
+            </span>
           </button>
         );
       })}
@@ -141,12 +165,16 @@ function PlayerFieldset({
         </div>
         <div>
           <div style={groupLabel}>SKILL</div>
+          {/* The picker shows the same thing the bowler is holding — ball,
+              silver, gold — so choosing a level and reading the lane are the
+              same vocabulary rather than two that have to be matched up. */}
           <Segmented
             label={`${name} skill`}
             options={SKILL_LEVELS}
             value={player.skill}
             onChange={(skill) => onChange({ ...player, skill })}
             format={skillLabel}
+            adorn={(lvl) => <SkillMark skill={lvl} />}
           />
         </div>
       </div>
