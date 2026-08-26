@@ -909,11 +909,20 @@ export function EnginePage() {
             page somebody looks up at mid-throw, so it holds the middle and
             never shifts as controls come and go around it. */}
         <div className={s.barCentre}>
+          {/* THE SCORE, OR THE FACT THAT THERE ISN'T ONE ANY MORE.
+              Appending "· GAME OVER" to the scores overran the bar on a real
+              phone: at 390px the finished two-bowler string measured 79px
+              WIDER than the space between Back and the buttons, and the centre
+              slot cannot shrink, so it grew straight over the Back link. It
+              never showed during play — "DEV 0" is 51px — only at the end.
+              Swapping rather than appending fixes it at every width, and costs
+              nothing now that the summary panel carries both scores. */}
           <span className={s.total}>
-            {players
-              .map((p, i) => `${bowlerLabel(p.kind).toUpperCase()} ${totalScore(match.games[i])}`)
-              .join("  ·  ")}
-            {over ? "  ·  GAME OVER" : ""}
+            {over
+              ? "GAME OVER"
+              : players
+                  .map((p, i) => `${bowlerLabel(p.kind).toUpperCase()} ${totalScore(match.games[i])}`)
+                  .join("  ·  ")}
           </span>
         </div>
 
