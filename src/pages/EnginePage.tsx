@@ -35,6 +35,8 @@ import { bowlerBall, bowlerChrome, bowlerLabel } from "../ui/roster";
 import { rollForSkill, skillTrophy } from "../ui/skill";
 import { Controls } from "../ui/Controls";
 import { BallCurtain } from "../ui/BallCurtain";
+import { SummaryPanel } from "../ui/SummaryPanel";
+import { useGameSummary } from "../ui/useGameSummary";
 import { DEFAULT_PLAYERS, DEFAULT_SETTINGS, type PlayerConfig, type Settings } from "../ui/settings";
 import { useCompactLayout } from "../ui/useCompactLayout";
 
@@ -81,6 +83,17 @@ const COUNT_FROM = 3;
 const COUNT_TICK_MS = 700;
 const COUNT_FADE_MS = 380;
 
+/**
+ * THE BEAT BEFORE THE SUMMARY.
+ *
+ * The last ball's leave is the thing that decided the game, and a panel that
+ * drops on top of it is a panel that covers the ending. So the room holds,
+ * the rake takes the deadwood and sets a fresh rack, and only then does the
+ * summary come up over it. The reset IS the game-over gesture; nothing has to
+ * announce it.
+ */
+const SUMMARY_HOLD_MS = 1500;
+
 const useStyles = makeStyles({
   page: {
     minHeight: "100vh",
@@ -107,7 +120,14 @@ const useStyles = makeStyles({
   },
   barLeft: { display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 },
   barCentre: { display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  barRight: { display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", flex: 1, minWidth: 0 },
+  barRight: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: "8px",
+    flex: 1,
+    minWidth: 0,
+  },
   title: {
     marginTop: 0,
     marginBottom: 0,
@@ -210,6 +230,12 @@ const useStyles = makeStyles({
     gap: "12px",
     height: "168px",
     flexShrink: 0,
+    // The coach and the card have no job once the game is over, so they leave
+    // — eased, because the room should settle rather than jump.
+    transitionProperty: "height, opacity",
+    transitionDuration: "420ms",
+    transitionTimingFunction: "ease",
+    overflow: "hidden",
     // COLUMN-REVERSE ON A PHONE (John): the card comes first, right under the
     // throw that just changed it, and the coach drops to sit against the
     // crowd it is talking to. Source order stays coach-then-card because that
@@ -263,7 +289,13 @@ const useStyles = makeStyles({
     // top edge — the one place the frame admits it was put there by someone.
     borderTopWidth: "4px",
     borderTopStyle: "solid",
-    "@media (max-width: 640px)": { width: "104px", height: "166px", top: "10px", left: "8px", borderTopWidth: "3px" },
+    "@media (max-width: 640px)": {
+      width: "104px",
+      height: "166px",
+      top: "10px",
+      left: "8px",
+      borderTopWidth: "3px",
+    },
   },
   // Air under the feet. The plate crosses the box's bottom edge, so the
   // figure has to stop well short of it — standing on the nameplate reads as
@@ -499,6 +531,22 @@ export function EnginePage() {
   }, [countdown]);
 
   /**
+   * The summary goes up a beat after the last ball lands, and comes straight
+   * down whenever a new game starts. Kept as its own flag rather than reading
+   * `over` directly, so the hold is a real pause rather than a render the
+   * panel happens to skip.
+   */
+  const [summaryUp, setSummaryUp] = useState(false);
+  useEffect(() => {
+    if (!over) {
+      setSummaryUp(false);
+      return;
+    }
+    const t = setTimeout(() => setSummaryUp(true), SUMMARY_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [over]);
+
+  /**
    * THE LANE IS BUSY UNTIL THE BALL HAS FINISHED ARRIVING.
    *
    * A throw owns the lane for a whole machine cycle — the ball travels, the
@@ -580,18 +628,24 @@ export function EnginePage() {
       return;
     }
     setShownStanding(r.standingBefore);
-    const t = setTimeout(() => {
-      const cur = latestRef.current;
-      setShownStanding(cur.activeRoll?.pinsLeft ?? FULL_RACK);
-      // The coach reacts to whoever just threw — one room, one commentator.
-      if (cur.lastBy !== null && cur.activeRoll) {
-        setShownMood(
-          classifyMood(cur.match.games[cur.lastBy], { kind: "roll", pins: cur.activeRoll.felled.length }),
-        );
-      }
-    }, (LANE_CYCLE.roll + 0.15) * 1000);
+    const t = setTimeout(
+      () => {
+        const cur = latestRef.current;
+        setShownStanding(cur.activeRoll?.pinsLeft ?? FULL_RACK);
+        // The coach reacts to whoever just threw — one room, one commentator.
+        if (cur.lastBy !== null && cur.activeRoll) {
+          setShownMood(
+            classifyMood(cur.match.games[cur.lastBy], { kind: "roll", pins: cur.activeRoll.felled.length }),
+          );
+        }
+      },
+      (LANE_CYCLE.roll + 0.15) * 1000,
+    );
     return () => clearTimeout(t);
   }, [rollId, lastBy]);
+
+  // Everything the summary renders, worked out and formatted one file over.
+  const summary = useGameSummary(match, players);
 
   const laneStyle: LaneStyle = settings.starlight ? "starlight" : "classic";
   /**
@@ -614,6 +668,7 @@ export function EnginePage() {
     busyRef.current = false;
     setBusy(false);
     setCountdown(COUNT_FROM);
+    setSummaryUp(false);
   };
 
   // ── the stage ─────────────────────────────────────────────────────────────
@@ -645,8 +700,11 @@ export function EnginePage() {
               <div key={i} className={s.houseLane}>
                 <LaneView
                   laneStyle={laneStyle}
-                  standing={idleStanding(match, i)}
-                  roll={lastBy === i ? activeRoll : undefined}
+                  // Once the summary is up the machine has racked for a game
+                  // nobody is going to bowl — the lane put back the way it was
+                  // found. That reset IS the game-over gesture.
+                  standing={summaryUp ? FULL_RACK : idleStanding(match, i)}
+                  roll={!summaryUp && lastBy === i ? activeRoll : undefined}
                   ballTint={bowlerBall(p.kind, settings.starlight)}
                   laneNumber={7 + i}
                   fit="slice"
@@ -657,34 +715,39 @@ export function EnginePage() {
           {/* META INFO, LOCKED INTO THE LANE'S TOP-RIGHT CORNER — pinned to
               the window rather than the strip, so it stays put while the
               camera travels and reports whatever the camera is looking at. */}
-          <div className={s.overheadChip}>
-            <span className={s.chipLabel}>OVERHEAD CAM</span>
-            <div className={s.chipBody}>
-              <Overhead standing={lastBy === viewIdx ? shownStanding : idleStanding(match, viewIdx)} />
+          {/* Both readouts are about the NEXT ball, so both leave with it. */}
+          {!summaryUp && (
+            <div className={s.overheadChip}>
+              <span className={s.chipLabel}>OVERHEAD CAM</span>
+              <div className={s.chipBody}>
+                <Overhead standing={lastBy === viewIdx ? shownStanding : idleStanding(match, viewIdx)} />
+              </div>
             </div>
-          </div>
+          )}
           {/* WHOEVER IS AT THE LINE, boxed like the overhead and standing
               under the lane's own label — they belong to the lane, not to a
               pane off to the side. The label sits along the BOTTOM here
               rather than the top, because the figure stands on it; the metal
               they have earned goes in the top corner, where it reads as a
               shelf rather than something they are carrying. */}
-          <div className={s.bowlerChip} style={{ borderTopColor: viewChrome }}>
-            <div className={s.bowlerArt}>
-              <BowlerFigure kind={players[viewIdx].kind} starlight={settings.starlight} />
-            </div>
-            {viewMetal && (
-              <div className={s.chipTrophy}>
-                <Trophy metal={viewMetal} />
+          {!summaryUp && (
+            <div className={s.bowlerChip} style={{ borderTopColor: viewChrome }}>
+              <div className={s.bowlerArt}>
+                <BowlerFigure kind={players[viewIdx].kind} starlight={settings.starlight} />
               </div>
-            )}
-            <span className={s.namePlate}>
-              <span className={s.plateFlash} style={{ background: viewChrome }} />
-              <span className={s.plateName}>
-                {bowlerLabel(players[viewIdx].kind).toUpperCase()} &middot; LANE {7 + viewIdx}
+              {viewMetal && (
+                <div className={s.chipTrophy}>
+                  <Trophy metal={viewMetal} />
+                </div>
+              )}
+              <span className={s.namePlate}>
+                <span className={s.plateFlash} style={{ background: viewChrome }} />
+                <span className={s.plateName}>
+                  {bowlerLabel(players[viewIdx].kind).toUpperCase()} &middot; LANE {7 + viewIdx}
+                </span>
               </span>
-            </span>
-          </div>
+            </div>
+          )}
           {/* THE ROLL BUTTON BELONGS TO THE LANE, NOT TO A BOWLER.
               It was bound to the bowler in shot — disabled unless the camera
               happened to be on whoever was up — and that deadlocked a manual
@@ -697,7 +760,7 @@ export function EnginePage() {
               A lane takes the next ball; WHOSE ball it is, is the engine's
               business — `rollOnce` already asks `bowlerUp`. So the button only
               cares whether the lane is free. */}
-          {!settings.autoRoll && (
+          {!settings.autoRoll && !summaryUp && (
             <Button
               appearance="primary"
               size="small"
@@ -713,6 +776,17 @@ export function EnginePage() {
               camera travels underneath it. It takes the colour of whoever is
               about to throw, which is how a two-hander learns whose game it is
               before the first ball. */}
+          {summaryUp && (
+            <SummaryPanel
+              view={summary}
+              onPlayAgain={newGame}
+              onChangePlayers={() => setDrawer(true)}
+              // Puts the panel away without touching the game. It stays away
+              // because `over` has not changed — only a new game raises it
+              // again, which is what New game and Play again both do.
+              onDismiss={() => setSummaryUp(false)}
+            />
+          )}
           {countdown !== null && (
             <BallCurtain
               tint={bowlerChrome(players[Math.min(up ?? 0, count - 1)].kind)}
@@ -736,7 +810,7 @@ export function EnginePage() {
           stacked and the window slides DOWN to the one in play. Vertical on
           purpose — the house travels sideways, so if the cards did too the two
           motions would read as one thing sliding, and they are not related. */}
-      <div className={s.middle}>
+      <div className={s.middle} style={summaryUp ? { height: 0, opacity: 0 } : undefined}>
         <Pane label="COACH" className={s.coachPane}>
           <CoachPanel mood={shownMood} />
         </Pane>
@@ -754,7 +828,11 @@ export function EnginePage() {
           >
             {players.map((p, i) => (
               <div key={i} className={s.cardSlot}>
-                <Scoreboard game={match.games[i]} playerName={bowlerLabel(p.kind).toUpperCase()} compact={compact} />
+                <Scoreboard
+                  game={match.games[i]}
+                  playerName={bowlerLabel(p.kind).toUpperCase()}
+                  compact={compact}
+                />
               </div>
             ))}
           </div>
@@ -762,7 +840,21 @@ export function EnginePage() {
       </div>
 
       {/* ── the stands own the bottom ─────────────────────────────────── */}
-      <Pane label="CROWD" style={{ height: compact ? "120px" : "190px", flexShrink: 0 }}>
+      {/* THE STANDS OWN THE BOTTOM — and own MORE of it once the game is
+          over. The room does not go dark and it does not cut away; it empties
+          of the people who had a job and fills with the people who were only
+          ever watching. They are observing the stats. */}
+      <Pane
+        label="CROWD"
+        style={{
+          // NOT TALLER THAN THE CROWD ACTUALLY DRAWS. `Crowd` renders at a
+          // fixed 300px on purpose, so a pane taller than that is a pane with
+          // an empty band under the back row rather than more crowd.
+          height: summaryUp ? (compact ? "180px" : "300px") : compact ? "120px" : "190px",
+          flexShrink: 0,
+          transition: "height 420ms ease",
+        }}
+      >
         <Crowd uv={settings.starlight} />
       </Pane>
     </div>
@@ -773,10 +865,17 @@ export function EnginePage() {
       <DrawerHeader>
         <DrawerHeaderTitle
           action={
-            <Button appearance="subtle" aria-label="Close" icon={<DismissRegular />} onClick={() => setDrawer(false)} />
+            <Button
+              appearance="subtle"
+              aria-label="Close"
+              icon={<DismissRegular />}
+              onClick={() => setDrawer(false)}
+            />
           }
         >
-          <span style={{ fontFamily: art.mono, fontSize: "0.95rem", letterSpacing: "0.16em", color: art.accent }}>
+          <span
+            style={{ fontFamily: art.mono, fontSize: "0.95rem", letterSpacing: "0.16em", color: art.accent }}
+          >
             BOWLERS &amp; CONTROLS
           </span>
         </DrawerHeaderTitle>
@@ -811,7 +910,9 @@ export function EnginePage() {
             never shifts as controls come and go around it. */}
         <div className={s.barCentre}>
           <span className={s.total}>
-            {players.map((p, i) => `${bowlerLabel(p.kind).toUpperCase()} ${totalScore(match.games[i])}`).join("  ·  ")}
+            {players
+              .map((p, i) => `${bowlerLabel(p.kind).toUpperCase()} ${totalScore(match.games[i])}`)
+              .join("  ·  ")}
             {over ? "  ·  GAME OVER" : ""}
           </span>
         </div>
@@ -863,7 +964,11 @@ export function EnginePage() {
             open={drawer}
             position="end"
             separator
-            style={{ width: "min(38%, 420px)", background: "transparent", borderLeft: `1px solid ${art.border}` }}
+            style={{
+              width: "min(38%, 420px)",
+              background: "transparent",
+              borderLeft: `1px solid ${art.border}`,
+            }}
           >
             {panel}
           </InlineDrawer>
