@@ -1,4 +1,4 @@
-import { gameFromRolls, simulateAutobowl } from "./engine";
+import { gameFromRolls, simulateAutobowl } from "../engine";
 import { PANEL_STATS, compareStat, summarise } from "./summary";
 
 // The summary layer, pinned. Every number below is worked by hand from the

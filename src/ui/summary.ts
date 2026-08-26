@@ -9,24 +9,33 @@ import {
   totalScore,
   type Frame,
   type Game,
-} from "./engine";
+} from "../engine";
 
 // ── What the game was ───────────────────────────────────────────────────────
 //
 // A finished game, read back as an explanation rather than a number.
 //
-// WHY THIS IS NOT IN `engine.ts`. That file scores bowling, and it earns trust
-// by being narrow about what it does — its README's "what it does not do" table
-// is a feature. None of this is scoring: it is analysis laid over a game the
-// engine has already finished with, and every function here is a pure function
-// of a `Game` that adds no primitive, stores no flag, and cannot change a
-// score. Keeping it one file over means the core's surface stays honest and
-// this layer stays just as liftable.
+// THIS IS NOT PART OF THE ENGINE, which is why it lives in `ui/` rather than
+// beside `engine.ts`. That file scores bowling and earns trust by being narrow
+// about what it does — its README's "what it does not do" table is a feature.
+// None of this is scoring: it is analysis laid over a game the engine has
+// already finished with, and nothing here adds a primitive, stores a flag, or
+// can change a score.
 //
-// NO REACT, NO COLOURS, NO COPY. A summary reports which bowler leads a stat
-// and by how much; whether that reads as "finds the pocket more consistently"
-// is presentation, and belongs to whatever is presenting this — the same
-// boundary the engine keeps about names, skins and lanes.
+// It is the MIRROR OF `skill.ts`, and sits beside it on purpose: skill is the
+// page-side driver deciding what goes ONTO the lane, this is the page-side
+// reader saying what came back off it. Neither belongs in the engine, both are
+// pure, both are tested on their own.
+//
+// NO REACT IN HERE, and no colours or copy either. A summary reports which
+// bowler leads a stat and by how much; whether that reads as "finds the pocket
+// more consistently" — or as `8.4 pins` rather than `8.4` — is presentation,
+// and it is packaged one file over in `useGameSummary`.
+//
+// NAMING: a component rendering this must NOT be called `Summary.tsx`. The repo
+// builds on a case-insensitive filesystem where that collides with this file
+// (TS1149) — the same trap that named `roster.ts` and `settings.ts`.
+// `SummaryPanel.tsx` is clear.
 //
 // THE TENTH FRAME IS ONE FRAME, everywhere in here. It gets one first ball and
 // one clean-frame verdict however many balls it actually took. Counting its
