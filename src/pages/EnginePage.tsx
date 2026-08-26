@@ -531,18 +531,37 @@ export function EnginePage() {
   }, [countdown]);
 
   /**
-   * The summary goes up a beat after the last ball lands, and comes straight
-   * down whenever a new game starts. Kept as its own flag rather than reading
-   * `over` directly, so the hold is a real pause rather than a render the
-   * panel happens to skip.
+   * THE ROOM AFTER THE LAST BALL — two flags, not one.
+   *
+   * `closed` is the LANE's fact: the last ball is spent, the machine has
+   * racked for a game nobody is going to bowl, and only a new game reopens
+   * it. `summaryUp` is only ever about the PANEL being on screen.
+   *
+   * They were a single flag, and dismissing replayed the final ball. Putting
+   * the panel away handed the lane its `roll` prop back; the ball's `<g>` had
+   * been unmounted, so it mounted fresh and ran `be-throw` from zero, the
+   * rack's key changed off `rack-idle` and every pin re-animated, and the
+   * whole machine cycle played out over a finished game. Dismiss is a
+   * statement about a panel; it was being read as a statement about the lane.
+   *
+   * Both go up together, a beat after the last ball lands. Only one of them
+   * comes down when you dismiss.
    */
+  const [closed, setClosed] = useState(false);
   const [summaryUp, setSummaryUp] = useState(false);
   useEffect(() => {
     if (!over) {
+      setClosed(false);
       setSummaryUp(false);
       return;
     }
-    const t = setTimeout(() => setSummaryUp(true), SUMMARY_HOLD_MS);
+    // Kept as its own timer rather than reading `over` directly, so the hold
+    // is a real pause — the last ball finishes arriving before the room
+    // closes on it — rather than a render the panel happens to skip.
+    const t = setTimeout(() => {
+      setClosed(true);
+      setSummaryUp(true);
+    }, SUMMARY_HOLD_MS);
     return () => clearTimeout(t);
   }, [over]);
 
@@ -668,6 +687,7 @@ export function EnginePage() {
     busyRef.current = false;
     setBusy(false);
     setCountdown(COUNT_FROM);
+    setClosed(false);
     setSummaryUp(false);
   };
 
@@ -700,11 +720,12 @@ export function EnginePage() {
               <div key={i} className={s.houseLane}>
                 <LaneView
                   laneStyle={laneStyle}
-                  // Once the summary is up the machine has racked for a game
+                  // Once the room is closed the machine has racked for a game
                   // nobody is going to bowl — the lane put back the way it was
-                  // found. That reset IS the game-over gesture.
-                  standing={summaryUp ? FULL_RACK : idleStanding(match, i)}
-                  roll={!summaryUp && lastBy === i ? activeRoll : undefined}
+                  // found. That reset IS the game-over gesture, and it holds
+                  // whether or not the panel is still covering it.
+                  standing={closed ? FULL_RACK : idleStanding(match, i)}
+                  roll={!closed && lastBy === i ? activeRoll : undefined}
                   ballTint={bowlerBall(p.kind, settings.starlight)}
                   laneNumber={7 + i}
                   fit="slice"
@@ -715,8 +736,10 @@ export function EnginePage() {
           {/* META INFO, LOCKED INTO THE LANE'S TOP-RIGHT CORNER — pinned to
               the window rather than the strip, so it stays put while the
               camera travels and reports whatever the camera is looking at. */}
-          {/* Both readouts are about the NEXT ball, so both leave with it. */}
-          {!summaryUp && (
+          {/* Both readouts are about the NEXT ball, so both leave with it —
+              and stay gone once the room is closed, because dismissing the
+              panel does not put another ball on the lane. */}
+          {!closed && (
             <div className={s.overheadChip}>
               <span className={s.chipLabel}>OVERHEAD CAM</span>
               <div className={s.chipBody}>
@@ -730,7 +753,7 @@ export function EnginePage() {
               rather than the top, because the figure stands on it; the metal
               they have earned goes in the top corner, where it reads as a
               shelf rather than something they are carrying. */}
-          {!summaryUp && (
+          {!closed && (
             <div className={s.bowlerChip} style={{ borderTopColor: viewChrome }}>
               <div className={s.bowlerArt}>
                 <BowlerFigure kind={players[viewIdx].kind} starlight={settings.starlight} />
@@ -759,8 +782,12 @@ export function EnginePage() {
 
               A lane takes the next ball; WHOSE ball it is, is the engine's
               business — `rollOnce` already asks `bowlerUp`. So the button only
-              cares whether the lane is free. */}
-          {!settings.autoRoll && !summaryUp && (
+              cares whether the lane is free.
+
+              Gone entirely once the room is closed, rather than sitting there
+              greyed out: `over` disabled it anyway, but a dead Roll button on
+              a racked lane reads as an invitation the house cannot honour. */}
+          {!settings.autoRoll && !closed && (
             <Button
               appearance="primary"
               size="small"
@@ -781,9 +808,12 @@ export function EnginePage() {
               view={summary}
               onPlayAgain={newGame}
               onChangePlayers={() => setDrawer(true)}
-              // Puts the panel away without touching the game. It stays away
-              // because `over` has not changed — only a new game raises it
-              // again, which is what New game and Play again both do.
+              // Puts the PANEL away and nothing else — `closed` stays up, so
+              // the lane keeps its full rack and the room stays shut. It
+              // stays away because `over` has not changed; only a new game
+              // raises it again, which is what New game and Play again both
+              // do (Play again IS `newGame` — the same handler the toolbar
+              // button uses).
               onDismiss={() => setSummaryUp(false)}
             />
           )}
