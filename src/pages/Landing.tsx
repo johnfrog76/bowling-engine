@@ -90,6 +90,13 @@ const useStyles = makeStyles({
       gap: "12px",
       marginTop: "48px",
     },
+    // Grid items default to `min-width: auto`, which sizes to their content's
+    // intrinsic (min-content) width. An unwrapped <pre> has no upper bound on
+    // that, so without this the track — and the whole page — grows to fit it
+    // instead of letting the pre's own overflow-x scroll kick in.
+    "& > *": {
+      minWidth: 0,
+    },
   },
   sectionWide: {
     marginTop: "72px",
@@ -180,6 +187,8 @@ const useStyles = makeStyles({
     borderRadius: "10px",
     background: art.panel,
     padding: "16px 18px",
+    maxWidth: "100%",
+    boxSizing: "border-box",
     overflowX: "auto",
     whiteSpace: "pre",
     margin: 0,
