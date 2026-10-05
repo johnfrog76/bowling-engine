@@ -10,8 +10,12 @@ for code see [Engine API](engine-api.md).
 Like every repo in this family, there's the **engine** and there's the
 **GUI that consumes it** — same split as the decks this engine also drives.
 
-- **The engine** ([`src/engine.ts`](../src/engine.ts)) is the algorithm: pure functions, zero
-  dependencies, zero UI. `scoreFrame`, `standingAfter` (the pins left after
+- **The engine** ([`src/engine.ts`](../src/engine.ts)) is the algorithm. Its core is
+  framework-free TypeScript — pure functions, no UI, nothing imported. The
+  same file also carries one thin React hook, `useBowlingSim`, which drives a
+  game on a clock by calling those functions; it is the file's only use of
+  React, so importing `src/engine.ts` does bring in the `react` package, while
+  none of the scoring depends on it. `scoreFrame`, `standingAfter` (the pins left after
   a roll), `isSplit`, `simulateAutobowl` — every rule in
   [Scoring rules](scoring.md), and nothing else.
 - **The GUI** ([`src/pages/EnginePage.tsx`](../src/pages/EnginePage.tsx)) is a small interactive scene

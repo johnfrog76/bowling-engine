@@ -15,10 +15,10 @@ game = applyRoll(game, [2, 3]); // or a pin-identity roll: which pins fell
 // ...or generate a full, plausible game in one call.
 const autobowlGame = simulateAutobowl(42);
 scoreFrame(autobowlGame, 0);
-// { value: 19, resolved: true }
+// { value: 7, resolved: true } — seed 42 opens with an open frame, 6 then 1
 
 runningTotal(autobowlGame, 9);
-// running total through the 10th frame
+// 177 — the running total through the 10th frame
 ```
 
 ## More than one bowler
@@ -32,7 +32,14 @@ let match = emptyMatch(2);
 bowlerUp(match); // 0 — first in the roster
 match = applyMatchRoll(match, 10); // a strike ends the frame after ONE ball...
 bowlerUp(match); // 1 — ...so the lane passes, with no special case
-matchScores(match); // [10-ish once it resolves, 0]
+matchScores(match); // [0, 0] — the strike is still waiting on its two bonus rolls
+
+match = applyMatchRoll(match, 3); // bowler 1: 3...
+match = applyMatchRoll(match, 4); // ...and 4, an open frame
+matchScores(match); // [0, 7]
+match = applyMatchRoll(match, 5); // bowler 0's next frame: 5...
+match = applyMatchRoll(match, 2); // ...and 2 — the strike's bonus has landed
+matchScores(match); // [24, 7] — strike 10 + 5 + 2, then 5 + 2
 ```
 
 No scoring code changes, because **no lookback ever crosses a bowler
